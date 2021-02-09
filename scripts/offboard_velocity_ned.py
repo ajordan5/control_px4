@@ -67,19 +67,18 @@ class VelCntrl:
             await self.drone.action.disarm()
             return
 
-        # secondary_task = asyncio.ensure_future(self.get_time())
-
         async for lla in self.drone.telemetry.position():
-            async for odom in self.drone.telemetry.odometry():
-                if self.time_set:
-                    self.time = odom.time_usec*1000000
-                    break
-                else:
-                    self.prev_time = odom.time_usec*1000000
-                    self.time_set = True
+            # async for odom in self.drone.telemetry.odometry():
+            #     if self.time_set:
+            #         time = odom.time_usec/1000000
+            #         break
+            #     else:
+            #         self.prev_time = odom.time_usec/1000000
+            #         self.time_set = True
+            self.time_set = True
             if self.ref_set and self.time_set:
-                cmdVel = self.get_commands(lla,self.time)
-                print('cmdVel = ', cmdVel)
+                time = 1.0
+                cmdVel = self.get_commands(lla,time)
                 await self.drone.offboard.set_velocity_ned(VelocityNedYaw(cmdVel[0],cmdVel[1],cmdVel[2], 0.0))
             else:
                 self.lat_ref = lla.latitude_deg
@@ -87,80 +86,16 @@ class VelCntrl:
                 self.alt_ref = lla.absolute_altitude_m
                 self.ref_set = True
 
-        # await secondary_task
-
-    # async def get_time(self):
-    #     async for odom in self.drone.telemetry.odometry():
-    #         if self.time_set:
-    #             self.time = odom.time_usec*1000000
-    #         else:
-    #             self.prev_time = odom.time_usec*1000000
-    #             self.time_set = True
-    
-    # async def vel_cmds(self):
-    #     async for lla in self.drone.telemetry.position():
-    #         print('outside of command routine')
-    #         if self.ref_set and self.time_set:
-    #             print('in command routine')
-    #             cmdVel = self.get_commands(lla,self.time)
-    #             await self.drone.offboard.set_velocity_ned(VelocityNedYaw(cmdVel[0],cmdVel[1],cmdVel[2], 0.0))
-    #         else:
-    #             self.lat_ref = lla.latitude_deg
-    #             self.lon_ref = lla.longitude_deg
-    #             self.alt_ref = lla.absolute_altitude_m
-    #             self.ref_set = True
-
-        # await asyncio.sleep(50)
-
-        # print("-- Go up 2 m/s")
-        # await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, -2.0, 0.0))
-        # await asyncio.sleep(4)
-
-        # print("-- Go North 2 m/s, turn to face East")
-        # await drone.offboard.set_velocity_ned(VelocityNedYaw(2.0, 0.0, 0.0, 90.0))
-        # await asyncio.sleep(4)
-
-        # print("-- Go South 2 m/s, turn to face West")
-        # await drone.offboard.set_velocity_ned(
-        #     VelocityNedYaw(-2.0, 0.0, 0.0, 270.0))
-        # await asyncio.sleep(4)
-
-        # print("-- Go West 2 m/s, turn to face East")
-        # await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, -2.0, 0.0, 90.0))
-        # await asyncio.sleep(4)
-
-        # print("-- Go East 2 m/s")
-        # await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 2.0, 0.0, 90.0))
-        # await asyncio.sleep(4)
-
-        # print("-- Turn to face South")
-        # await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 180.0))
-        # await asyncio.sleep(2)
-
-        # print("-- Go down 1 m/s, turn to face North")
-        # await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 1.0, 0.0))
-        # await asyncio.sleep(4)
-
-        # print("-- Stopping offboard")
-        # try:
-        #     await drone.offboard.stop()
-        # except OffboardError as error:
-        #     print(f"Stopping offboard mode failed with error code: \
-        #         {error._result.result}")
-
     def get_commands(self,lla,time):
         ned = navpy.lla2ned(lla.latitude_deg,lla.longitude_deg,lla.absolute_altitude_m,self.lat_ref,self.lon_ref,self.alt_ref)
         dt = time - self.prev_time
-
-        cmdX = self.ned_desired[0] - ned[0]
-        cmdY = self.ned_desired[1] - ned[1]
-        cmdZ = self.ned_desired[2] - ned[2]
-        # self.northPid.update_control(ned[0],self.ned_desired[0],dt)
-        # cmdX = self.northPid.command
-        # self.eastPid.update_control(ned[1],self.ned_desired[1],dt)
-        # cmdY = self.eastPid.command
-        # self.downPid.update_control(ned[2],self.ned_desired[2],dt)
-        # cmdZ = self.downPid.command
+        dt = 0.1
+        self.northPid.update_control(ned[0],self.ned_desired[0],dt)
+        cmdX = self.northPid.command
+        self.eastPid.update_control(ned[1],self.ned_desired[1],dt)
+        cmdY = self.eastPid.command
+        self.downPid.update_control(ned[2],self.ned_desired[2],dt)
+        cmdZ = self.downPid.command
 
         self.prev_time = time
 
