@@ -7,13 +7,34 @@ from mavsdk import System
 from mavsdk.offboard import (OffboardError, VelocityNedYaw)
 import navpy
 
+from pid_class import PID
+
 
 class VelCntrl:
     def __init__(self):
-        self.pos_desired = [0.0,0.0,-2.0]
-        self.KpX = 1.0
-        self.KpY = 1.0
-        self.KpZ = 1.0
+        self.ned_desired = [0.0,0.0,-2.0]
+
+        kpN = 1.0
+        kiN = 0.0
+        kdN = 0.0
+        tauN = 0.0
+        maxNDot = 1000
+        self.northPid = PID(kpN,kiN,kdN,tauN,maxNDot)
+
+        kpE = 1.0
+        kiE = 0.0
+        kdE = 0.0
+        tauE = 0.0
+        maxEDot = 1000
+        self.eastPid = PID(kpE,kiE,kdE,tauE,maxEDot)
+
+        kpD = 1.0
+        kiD = 0.0
+        kdD = 0.0
+        tauD = 0.0
+        maxDDot = 1000
+        self.downPid = PID(kpD,kiD,kdD,tauD,maxDDot)
+
         self.ref_set = False
 
     async def run(self):
@@ -94,9 +115,14 @@ class VelCntrl:
 
     def get_commands(self,lla):
         ned = navpy.lla2ned(lla.latitude_deg,lla.longitude_deg,lla.absolute_altitude_m,self.lat_ref,self.lon_ref,self.alt_ref)
-        cmdX = self.KpX*(self.pos_desired[0] - ned[0])
-        cmdY = self.KpY*(self.pos_desired[1] - ned[1])
-        cmdZ = self.KpZ*(self.pos_desired[2] - ned[2])
+        
+        self.northPid.update_control(ned[0],self.ned_desired[0],dt)
+        cmdX = self.northPid.command
+        self.eastPid.update_control(ned[1],self.ned_desired[1],dt)
+        cmdY = self.eastPid.command
+        self.downPid.update_control(ned[2],self.ned_desired[2],dt)
+        cmdZ = self.downPid.command
+
         cmd = [cmdX,cmdY,cmdZ]
         return cmd
 
