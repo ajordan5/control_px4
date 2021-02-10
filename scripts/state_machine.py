@@ -10,20 +10,21 @@ class StateMachine:
                               #2 - descend
                               #3 - land
 
-        self.first_waypoint = [0.0,0.0,-2.0]
-        self.hlc = self.first_waypoint
-        self.hlc_msg = Point()
+        self.firstWaypoint = [0.0,0.0,-2.0]
+        self.hlc = self.firstWaypoint
+        self.hlcMsg = Point()
 
-        self.rendevous_threshold = 0.3
-        self.descend_threshold = 0.3
-        self.descent_height = -2.0
-        self.landing_threshold = 0.3
-        self.landing_height = -0.15
+        self.rendevousThreshold = 0.3
+        self.descendThreshold = 0.3
+        self.descentHeight = -2.0
+        self.landingThreshold = 0.3
+        self.landingHeight = -0.15
 
         self.roverNed = [0.0,0.0,0.0]
         self.boatNed = [0.0,0.0,0.0]
 
         self.boat_sub_ = rospy.Subscriber('boat_pos', Point, self.boatCallback, queue_size=5)
+        self.rover_sub_ = rospy.Subscriber('rover_pos',Point,self.roverCallback,queue_size=5)
         self.hlc_pub_ = rospy.Publisher('hlc',Point,queue_size=5,latch=True)
 
     def boatCallback(self,msg):
@@ -45,21 +46,21 @@ class StateMachine:
             self.fly_mission(error)
 
     def fly_mission(self,error):
-        self.hlc = self.first_waypoint
+        self.hlc = self.firstWaypoint
         self.publish_hlc()
-        if error < self.rendevous_threshold:
+        if error < self.rendevousThreshold:
             self.missionState = 1
         
     def rendevous(self,error):
-        self.hlc = np.array(self.boatNed) + np.array([0.0,0.0,self.descent_height])
+        self.hlc = np.array(self.boatNed) + np.array([0.0,0.0,self.descentHeight])
         self.publish_hlc()
-        if error < self.descend_threshold:
+        if error < self.descendThreshold:
             self.missionState = 2
 
     def descend(self,error):
-        self.hlc = np.array(self.boatNed) + np.array([0.0,0.0,self.landing_height])
+        self.hlc = np.array(self.boatNed) + np.array([0.0,0.0,self.landingHeight])
         self.publish_hlc()
-        if error < self.landing_threshold:
+        if error < self.landingThreshold:
             self.missionState = 3
 
     def land(self):
@@ -67,10 +68,10 @@ class StateMachine:
         self.publish_hlc()
 
     def publish_hlc(self):
-        self.hlc_msg.x = self.hlc[0]
-        self.hlc_msg.y = self.hlc[1]
-        self.hlc_msg.z = self.hlc[2]
-        self.hlc_pub_.publish(self.hlc_msg)
+        self.hlcMsg.x = self.hlc[0]
+        self.hlcMsg.y = self.hlc[1]
+        self.hlcMsg.z = self.hlc[2]
+        self.hlc_pub_.publish(self.hlcMsg)
 
 if __name__ == "__main__":
     rospy.init_node('state_machine', anonymous=True)

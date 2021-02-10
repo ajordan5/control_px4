@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 import asyncio
 from mavsdk import System
 from mavsdk.offboard import (OffboardError, VelocityNedYaw)
@@ -14,13 +13,13 @@ from pid_class import PID
 
 class VelCntrl:
     def __init__(self):
-        self.ref_pub_ = rospy.Publisher('ref',Point,queue_size=5,latch=True)
-        self.boat_vel_sub_ = rospy.Subscriber('boat_vel', Point, self.boatVelCallback, queue_size=5)
-        self.ref_lla = Point()
-        self.boat_ned = [0.0,0.0,0.0]
-        self.rendevous_height = -2.0
-
+        self.hlc = [0.0,0.0,0.0]
         self.prev_time = 0.0 #seconds
+        self.lat_ref = 0.0
+        self.lon_ref = 0.0
+        self.alt_ref = 0.0
+        self.ref_set = False
+        self.time_set = False
 
         kpN = 1.0
         kiN = 0.0
@@ -46,21 +45,23 @@ class VelCntrl:
         self.downPid = PID(kpD,kiD,kdD,tauD,maxDDot)
         self.kffD = 1.0+kdD
 
-        self.ref_set = False
-        self.time_set = False
+        self.rover_pos = Point()
 
-    def boatCallback(self,msg):
-        if self.ref_set:
-            self.boat_ned = navpy.lla2ned(msg.x,msg.y,msg.z,self.lat_ref,self.lon_ref,self.alt_ref)
+        self.rover_pos_pub_ = rospy.Publisher('rover_pos',Point,queue_size=5,latch=True)
+        self.hlc_sub_ = rospy.Subscriber('hlc', Point, self.hlcCallback, queue_size=5) 
+        self.boat_vel_sub_ = rospy.Subscriber('boat_vel', Point, self.boatVelCallback, queue_size=5)
+
+    def hlcCallback(self,msg):
+        self.hlc = [msg.x,msg.y,msg.z]
     
     def boatVelCallback(self,msg):
         self.boat_vel = [msg.x,msg.y,msg.z]
 
-    def publish_ref(self):
-        self.ref_lla.x = self.lat_ref
-        self.ref_lla.y = self.lon_ref
-        self.ref_lla.z = self.alt_ref
-        self.ref_pub_.publish(self.ref_lla)
+    def publish_rover_pos(self,ned):
+        self.rover_pos.x = ned[0]
+        self.rover_pos.y = ned[1]
+        self.rover_pos.z = ned[2]
+        self.rover_pos_pub_.publish(self.rover_pos)
 
     async def run(self):
         """ Does Offboard control using velocity NED coordinates. """
@@ -99,14 +100,15 @@ class VelCntrl:
         async for lla in self.drone.telemetry.position():
             self.time_set = True
             if self.ref_set and self.time_set:
-                cmdVel = self.get_commands(lla)
+                ned = navpy.lla2ned(lla.latitude_deg,lla.longitude_deg,lla.absolute_altitude_m,self.lat_ref,self.lon_ref,self.alt_ref)
+                self.publish_rover_pos(ned)
+                cmdVel = self.get_commands(ned)
                 cmdVel = self.add_feed_forward(cmdVel)
                 await self.drone.offboard.set_velocity_ned(VelocityNedYaw(cmdVel[0],cmdVel[1],cmdVel[2], 0.0))
             else:
                 self.lat_ref = lla.latitude_deg
                 self.lon_ref = lla.longitude_deg
                 self.alt_ref = lla.absolute_altitude_m
-                self.publish_ref()
                 self.ref_set = True
 
     async def run_time_task(self):
@@ -117,19 +119,16 @@ class VelCntrl:
                 self.prev_time = odom.time_usec/1000000
                 self.time_set = True
 
-    def get_commands(self,lla):
-        ned = navpy.lla2ned(lla.latitude_deg,lla.longitude_deg,lla.absolute_altitude_m,self.lat_ref,self.lon_ref,self.alt_ref)
+    def get_commands(self,ned):
         dt = self.time - self.prev_time
-        self.northPid.update_control(ned[0],self.boat_ned[0],dt)
+        self.northPid.update_control(ned[0],self.hlc[0],dt)
         cmdX = self.northPid.command 
-        self.eastPid.update_control(ned[1],self.boat_ned[1],dt)
+        self.eastPid.update_control(ned[1],self.hlc[1],dt)
         cmdY = self.eastPid.command
-        self.downPid.update_control(ned[2],self.boat_ned[2]+self.rendevous_height,dt)
+        self.downPid.update_control(ned[2],self.hlc[2],dt)
         cmdZ = self.downPid.command
-
-        self.prev_time = self.time
-
         cmd = [cmdX,cmdY,cmdZ]
+        self.prev_time = self.time
         return cmd
 
     def add_feed_forward(self,cmdVel):
