@@ -12,20 +12,25 @@ class StateMachine:
 
         self.firstWaypoint = [0.0,0.0,-2.0]
         self.hlc = self.firstWaypoint
-        self.hlcMsg = Point()
+        self.antennaOffset = [0.0,0.0,-0.5]
 
         self.rendevousThreshold = 0.3
         self.descendThreshold = 0.3
-        self.descentHeight = -2.0
-        self.landingThreshold = 0.3
+        self.descendHeight = -2.0
+        self.landingThreshold = 0.1
         self.landingHeight = -0.15
 
         self.roverNed = [0.0,0.0,0.0]
         self.boatNed = [0.0,0.0,0.0]
 
+        self.hlcMsg = Point()
+
         self.boat_sub_ = rospy.Subscriber('boat_pos', Point, self.boatCallback, queue_size=5)
         self.rover_sub_ = rospy.Subscriber('rover_pos',Point,self.roverCallback,queue_size=5)
         self.hlc_pub_ = rospy.Publisher('hlc',Point,queue_size=5,latch=True)
+
+        while not rospy.is_shutdown():
+            rospy.spin()
 
     def boatCallback(self,msg):
         self.boatNed = [msg.x,msg.y,msg.z]
@@ -35,36 +40,41 @@ class StateMachine:
         self.update_hlc()
 
     def update_hlc(self):
-        error = np.linalg.norm(np.array(self.hlc)-np.array(self.roverNed))
         if self.missionState == 1:
-            self.rendevous(error)
+            self.rendevous()
         elif self.missionState == 2:
-            self.descend(error)
+            self.descend()
         elif self.missionState == 3:
             self.land()
         else:
-            self.fly_mission(error)
+            self.fly_mission()
 
-    def fly_mission(self,error):
+    def fly_mission(self):
         self.hlc = self.firstWaypoint
         self.publish_hlc()
+        error = np.linalg.norm(np.array(self.hlc)-np.array(self.roverNed))
         if error < self.rendevousThreshold:
             self.missionState = 1
+            print('rendevous state')
         
-    def rendevous(self,error):
-        self.hlc = np.array(self.boatNed) + np.array([0.0,0.0,self.descentHeight])
+    def rendevous(self):
+        self.hlc = np.array(self.boatNed) + np.array([0.0,0.0,self.descendHeight]) + np.array(self.antennaOffset)
         self.publish_hlc()
+        error = np.linalg.norm(np.array(self.hlc)-np.array(self.roverNed))
         if error < self.descendThreshold:
             self.missionState = 2
+            print('descend state')
 
-    def descend(self,error):
-        self.hlc = np.array(self.boatNed) + np.array([0.0,0.0,self.landingHeight])
+    def descend(self):
+        self.hlc = np.array(self.boatNed) + np.array([0.0,0.0,self.landingHeight]) + np.array(self.antennaOffset)
         self.publish_hlc()
+        error = np.linalg.norm(np.array(self.hlc)-np.array(self.roverNed))
         if error < self.landingThreshold:
             self.missionState = 3
+            print('land state')
 
     def land(self):
-        self.hlc = np.array(self.boatNed) + np.array([0.0,0.0,1.0]) #multirotor attemptes to drive itself into the platform 1 meter deep.
+        self.hlc = np.array(self.boatNed) + np.array([0.0,0.0,1.0]) + np.array(self.antennaOffset) #multirotor attemptes to drive itself into the platform 1 meter deep.
         self.publish_hlc()
 
     def publish_hlc(self):

@@ -22,32 +22,34 @@ class VelCntrl:
         self.time_set = False
 
         kpN = 1.0
-        kiN = 0.0
-        kdN = 0.3
+        kiN = 0.1
+        kdN = 0.2
         tauN = 0.0
         maxNDot = 8.0
         self.northPid = PID(kpN,kiN,kdN,tauN,maxNDot)
         self.kffN = 1.0+kdN
 
         kpE = 1.0
-        kiE = 0.0
-        kdE = 0.3
+        kiE = 0.1
+        kdE = 0.2
         tauE = 0.0
         maxEDot = 8.0
         self.eastPid = PID(kpE,kiE,kdE,tauE,maxEDot)
         self.kffE = 1.0+kdE
 
         kpD = 1.0
-        kiD = 0.0
-        kdD = 0.3
+        kiD = 0.1
+        kdD = 0.2
         tauD = 0.0
         maxDDot = 8.0
         self.downPid = PID(kpD,kiD,kdD,tauD,maxDDot)
         self.kffD = 1.0+kdD
 
+        self.ref_lla = Point()
         self.rover_pos = Point()
 
         self.rover_pos_pub_ = rospy.Publisher('rover_pos',Point,queue_size=5,latch=True)
+        self.ref_lla_pub_ = rospy.Publisher('ref_lla',Point,queue_size=5,latch=True)
         self.hlc_sub_ = rospy.Subscriber('hlc', Point, self.hlcCallback, queue_size=5) 
         self.boat_vel_sub_ = rospy.Subscriber('boat_vel', Point, self.boatVelCallback, queue_size=5)
 
@@ -56,6 +58,12 @@ class VelCntrl:
     
     def boatVelCallback(self,msg):
         self.boat_vel = [msg.x,msg.y,msg.z]
+
+    def publish_ref_lla(self):
+        self.ref_lla.x = self.lat_ref
+        self.ref_lla.y = self.lon_ref
+        self.ref_lla.z = self.alt_ref
+        self.ref_lla_pub_.publish(self.ref_lla)
 
     def publish_rover_pos(self,ned):
         self.rover_pos.x = ned[0]
@@ -77,8 +85,6 @@ class VelCntrl:
 
         print("-- Arming")
         await self.drone.action.arm()
-
-        await self.drone.action.takeoff()
 
         print("-- Setting initial setpoint")
         await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
@@ -110,6 +116,7 @@ class VelCntrl:
                 self.lon_ref = lla.longitude_deg
                 self.alt_ref = lla.absolute_altitude_m
                 self.ref_set = True
+                self.publish_ref_lla()
 
     async def run_time_task(self):
         async for odom in self.drone.telemetry.odometry():
