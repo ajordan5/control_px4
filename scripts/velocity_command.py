@@ -7,6 +7,7 @@ import navpy
 import rospy
 
 from geometry_msgs.msg import Point
+from std_msgs.msg import Bool
 
 from pid_class import PID
 
@@ -20,6 +21,7 @@ class VelCntrl:
         self.alt_ref = 0.0
         self.ref_set = False
         self.time_set = False
+        self.beginLandingroutine = False
 
         kpN = 1.0
         kiN = 0.1
@@ -52,12 +54,16 @@ class VelCntrl:
         self.ref_lla_pub_ = rospy.Publisher('ref_lla',Point,queue_size=5,latch=True)
         self.hlc_sub_ = rospy.Subscriber('hlc', Point, self.hlcCallback, queue_size=5) 
         self.boat_vel_sub_ = rospy.Subscriber('boat_vel', Point, self.boatVelCallback, queue_size=5)
+        self.begin_landing_routine_sub_ = rospy.Subscriber('begin_landing_routine', Bool, self.beginLandingroutineCallback, queue_size=5)
 
     def hlcCallback(self,msg):
         self.hlc = [msg.x,msg.y,msg.z]
     
     def boatVelCallback(self,msg):
         self.boat_vel = [msg.x,msg.y,msg.z]
+
+    def beginLandingroutineCallback(self,msg):
+        self.beginLandingroutine = msg.data
 
     def publish_ref_lla(self):
         self.ref_lla.x = self.lat_ref
@@ -109,7 +115,8 @@ class VelCntrl:
                 ned = navpy.lla2ned(lla.latitude_deg,lla.longitude_deg,lla.absolute_altitude_m,self.lat_ref,self.lon_ref,self.alt_ref)
                 self.publish_rover_pos(ned)
                 cmdVel = self.get_commands(ned)
-                cmdVel = self.add_feed_forward(cmdVel)
+                if self.beginLandingroutine:
+                    cmdVel = self.add_feed_forward(cmdVel)
                 await self.drone.offboard.set_velocity_ned(VelocityNedYaw(cmdVel[0],cmdVel[1],cmdVel[2], 0.0))
             else:
                 self.lat_ref = lla.latitude_deg

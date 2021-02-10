@@ -1,6 +1,7 @@
 import numpy as np
 import rospy
 from geometry_msgs.msg import Point
+from std_msgs.msg import Bool
 
 
 class StateMachine:
@@ -24,10 +25,12 @@ class StateMachine:
         self.boatNed = [0.0,0.0,0.0]
 
         self.hlcMsg = Point()
+        self.beginLandingRoutineMsg = Bool()
 
         self.boat_sub_ = rospy.Subscriber('boat_pos', Point, self.boatCallback, queue_size=5)
         self.rover_sub_ = rospy.Subscriber('rover_pos',Point,self.roverCallback,queue_size=5)
         self.hlc_pub_ = rospy.Publisher('hlc',Point,queue_size=5,latch=True)
+        self.begin_landing_routine_pub_ = rospy.Publisher('begin_landing_routine',Bool,queue_size=5,latch=True)
 
         while not rospy.is_shutdown():
             rospy.spin()
@@ -56,6 +59,8 @@ class StateMachine:
         if error < self.rendevousThreshold:
             self.missionState = 1
             print('rendevous state')
+            self.beginLandingRoutineMsg.data = True
+            self.begin_landing_routine_pub_.publish(self.beginLandingRoutineMsg)
         
     def rendevous(self):
         self.hlc = np.array(self.boatNed) + np.array([0.0,0.0,self.descendHeight]) + np.array(self.antennaOffset)
