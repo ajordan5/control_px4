@@ -15,7 +15,6 @@ from pid_class import PID
 class VelCntrl:
     def __init__(self):
         self.ref_pub_ = rospy.Publisher('ref',Point,queue_size=5,latch=True)
-        self.boat_sub_ = rospy.Subscriber('boat_pos', Point, self.boatCallback, queue_size=5)
         self.boat_vel_sub_ = rospy.Subscriber('boat_vel', Point, self.boatVelCallback, queue_size=5)
         self.ref_lla = Point()
         self.boat_ned = [0.0,0.0,0.0]
