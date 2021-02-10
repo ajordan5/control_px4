@@ -24,21 +24,21 @@ class VelCntrl:
 
         kpN = 1.0
         kiN = 0.0
-        kdN = 0.0
+        kdN = 0.3
         tauN = 0.0
         maxNDot = 1000
         self.northPid = PID(kpN,kiN,kdN,tauN,maxNDot)
 
         kpE = 1.0
         kiE = 0.0
-        kdE = 0.0
+        kdE = 0.3
         tauE = 0.0
         maxEDot = 1000
         self.eastPid = PID(kpE,kiE,kdE,tauE,maxEDot)
 
         kpD = 1.0
         kiD = 0.0
-        kdD = 0.0
+        kdD = 0.3
         tauD = 0.0
         maxDDot = 1000
         self.downPid = PID(kpD,kiD,kdD,tauD,maxDDot)
@@ -83,18 +83,14 @@ class VelCntrl:
             await self.drone.action.disarm()
             return
 
+        asyncio.create_task(self.run_control_task())
+        asyncio.create_task(self.run_time_task())
+
+    async def run_control_task(self):
         async for lla in self.drone.telemetry.position():
-            # async for odom in self.drone.telemetry.odometry():
-            #     if self.time_set:
-            #         time = odom.time_usec/1000000
-            #         break
-            #     else:
-            #         self.prev_time = odom.time_usec/1000000
-            #         self.time_set = True
             self.time_set = True
             if self.ref_set and self.time_set:
-                time = 1.0
-                cmdVel = self.get_commands(lla,time)
+                cmdVel = self.get_commands(lla)
                 await self.drone.offboard.set_velocity_ned(VelocityNedYaw(cmdVel[0],cmdVel[1],cmdVel[2], 0.0))
             else:
                 self.lat_ref = lla.latitude_deg
@@ -103,10 +99,17 @@ class VelCntrl:
                 self.publish_ref()
                 self.ref_set = True
 
-    def get_commands(self,lla,time):
+    async def run_time_task(self):
+        async for odom in self.drone.telemetry.odometry():
+            if self.time_set:
+                self.time = odom.time_usec/1000000
+            else:
+                self.prev_time = odom.time_usec/1000000
+                self.time_set = True
+
+    def get_commands(self,lla):
         ned = navpy.lla2ned(lla.latitude_deg,lla.longitude_deg,lla.absolute_altitude_m,self.lat_ref,self.lon_ref,self.alt_ref)
-        dt = time - self.prev_time
-        dt = 0.1
+        dt = self.time - self.prev_time
         self.northPid.update_control(ned[0],self.boat_ned[0],dt)
         cmdX = self.northPid.command 
         self.eastPid.update_control(ned[1],self.boat_ned[1],dt)
@@ -114,7 +117,7 @@ class VelCntrl:
         self.downPid.update_control(ned[2],self.boat_ned[2]+self.rendevous_height,dt)
         cmdZ = self.downPid.command
 
-        self.prev_time = time
+        self.prev_time = self.time
 
         cmd = [cmdX,cmdY,cmdZ]
         return cmd
