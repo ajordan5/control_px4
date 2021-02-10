@@ -16,6 +16,7 @@ class VelCntrl:
     def __init__(self):
         self.ref_pub_ = rospy.Publisher('ref',Point,queue_size=5,latch=True)
         self.boat_sub_ = rospy.Subscriber('boat_pos', Point, self.boatCallback, queue_size=5)
+        self.boat_vel_sub_ = rospy.Subscriber('boat_vel', Point, self.boatVelCallback, queue_size=5)
         self.ref_lla = Point()
         self.boat_ned = [0.0,0.0,0.0]
         self.rendevous_height = -2.0
@@ -26,28 +27,35 @@ class VelCntrl:
         kiN = 0.0
         kdN = 0.3
         tauN = 0.0
-        maxNDot = 1000
+        maxNDot = 8.0
         self.northPid = PID(kpN,kiN,kdN,tauN,maxNDot)
+        self.kffN = 1.0+kdN
 
         kpE = 1.0
         kiE = 0.0
         kdE = 0.3
         tauE = 0.0
-        maxEDot = 1000
+        maxEDot = 8.0
         self.eastPid = PID(kpE,kiE,kdE,tauE,maxEDot)
+        self.kffE = 1.0+kdE
 
         kpD = 1.0
         kiD = 0.0
         kdD = 0.3
         tauD = 0.0
-        maxDDot = 1000
+        maxDDot = 8.0
         self.downPid = PID(kpD,kiD,kdD,tauD,maxDDot)
+        self.kffD = 1.0+kdD
 
         self.ref_set = False
         self.time_set = False
 
     def boatCallback(self,msg):
-        self.boat_ned = navpy.lla2ned(msg.x,msg.y,msg.z,self.lat_ref,self.lon_ref,self.alt_ref)
+        if self.ref_set:
+            self.boat_ned = navpy.lla2ned(msg.x,msg.y,msg.z,self.lat_ref,self.lon_ref,self.alt_ref)
+    
+    def boatVelCallback(self,msg):
+        self.boat_vel = [msg.x,msg.y,msg.z]
 
     def publish_ref(self):
         self.ref_lla.x = self.lat_ref
@@ -70,6 +78,8 @@ class VelCntrl:
         print("-- Arming")
         await self.drone.action.arm()
 
+        await self.drone.action.takeoff()
+
         print("-- Setting initial setpoint")
         await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
 
@@ -91,6 +101,7 @@ class VelCntrl:
             self.time_set = True
             if self.ref_set and self.time_set:
                 cmdVel = self.get_commands(lla)
+                cmdVel = self.add_feed_forward(cmdVel)
                 await self.drone.offboard.set_velocity_ned(VelocityNedYaw(cmdVel[0],cmdVel[1],cmdVel[2], 0.0))
             else:
                 self.lat_ref = lla.latitude_deg
@@ -122,6 +133,11 @@ class VelCntrl:
         cmd = [cmdX,cmdY,cmdZ]
         return cmd
 
+    def add_feed_forward(self,cmdVel):
+        cmdVel[0] = cmdVel[0] + self.kffN*self.boat_vel[0]
+        cmdVel[1] = cmdVel[1] + self.kffE*self.boat_vel[1]
+        cmdVel[2] = cmdVel[2] + self.kffD*self.boat_vel[2]
+        return cmdVel
 
 if __name__ == "__main__":
     rospy.init_node('vel_cmd', anonymous=True)
