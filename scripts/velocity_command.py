@@ -2,18 +2,25 @@
 
 
 import asyncio
-
 from mavsdk import System
 from mavsdk.offboard import (OffboardError, VelocityNedYaw)
 import navpy
+import rospy
+
+from geometry_msgs.msg import Point
 
 from pid_class import PID
 
 
 class VelCntrl:
     def __init__(self):
+        self.ref_pub_ = rospy.Publisher('ref',Point,queue_size=5,latch=True)
+        self.boat_sub_ = rospy.Subscriber('boat_pos', Point, self.boatCallback, queue_size=5)
+        self.ref_lla = Point()
+        self.boat_ned = [0.0,0.0,0.0]
+        self.rendevous_height = -2.0
+
         self.prev_time = 0.0 #seconds
-        self.ned_desired = [0.0,0.0,-2.0]
 
         kpN = 1.0
         kiN = 0.0
@@ -38,6 +45,15 @@ class VelCntrl:
 
         self.ref_set = False
         self.time_set = False
+
+    def boatCallback(self,msg):
+        self.boat_ned = navpy.lla2ned(msg.x,msg.y,msg.z,self.lat_ref,self.lon_ref,self.alt_ref)
+
+    def publish_ref(self):
+        self.ref_lla.x = self.lat_ref
+        self.ref_lla.y = self.lon_ref
+        self.ref_lla.z = self.alt_ref
+        self.ref_pub_.publish(self.ref_lla)
 
     async def run(self):
         """ Does Offboard control using velocity NED coordinates. """
@@ -84,17 +100,18 @@ class VelCntrl:
                 self.lat_ref = lla.latitude_deg
                 self.lon_ref = lla.longitude_deg
                 self.alt_ref = lla.absolute_altitude_m
+                self.publish_ref()
                 self.ref_set = True
 
     def get_commands(self,lla,time):
         ned = navpy.lla2ned(lla.latitude_deg,lla.longitude_deg,lla.absolute_altitude_m,self.lat_ref,self.lon_ref,self.alt_ref)
         dt = time - self.prev_time
         dt = 0.1
-        self.northPid.update_control(ned[0],self.ned_desired[0],dt)
-        cmdX = self.northPid.command
-        self.eastPid.update_control(ned[1],self.ned_desired[1],dt)
+        self.northPid.update_control(ned[0],self.boat_ned[0],dt)
+        cmdX = self.northPid.command 
+        self.eastPid.update_control(ned[1],self.boat_ned[1],dt)
         cmdY = self.eastPid.command
-        self.downPid.update_control(ned[2],self.ned_desired[2],dt)
+        self.downPid.update_control(ned[2],self.boat_ned[2]+self.rendevous_height,dt)
         cmdZ = self.downPid.command
 
         self.prev_time = time
@@ -104,7 +121,12 @@ class VelCntrl:
 
 
 if __name__ == "__main__":
-    vel_cntrl = VelCntrl()
-    asyncio.ensure_future(vel_cntrl.run())
-    loop = asyncio.get_event_loop()
-    loop.run_forever()
+    rospy.init_node('vel_cmd', anonymous=True)
+    try:
+        vel_cntrl = VelCntrl()
+        asyncio.ensure_future(vel_cntrl.run())
+        loop = asyncio.get_event_loop()
+        loop.run_forever()
+    except:
+        rospy.ROSInterruptException
+    pass
