@@ -117,6 +117,7 @@ class VelCntrl:
                 cmdVel = self.get_commands(ned)
                 if self.beginLandingroutine:
                     cmdVel = self.add_feed_forward(cmdVel)
+                #try set_position_velocity.  It will add feed forward for you.
                 await self.drone.offboard.set_velocity_ned(VelocityNedYaw(cmdVel[0],cmdVel[1],cmdVel[2], 0.0))
             else:
                 self.lat_ref = lla.latitude_deg
