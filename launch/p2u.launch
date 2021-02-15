@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<launch>
+    <group ns="p2u">
+        <rosparam command="load" file="$(find control-px4)/params/mocap2ublox.yaml"/>
+        <node name="px4_2ublox" pkg="control-px4" type="px4_2ublox.py" output="screen"/>
+    </group>
+</launch>
