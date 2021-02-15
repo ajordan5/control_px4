@@ -14,6 +14,7 @@ from std_msgs.msg import Bool
 class CntrlPx4:
     def __init__(self):
         self.velCmd = [0.0,0.0,0.0]
+        self.estimate = Point()
 
         self.estimate_pub_ = rospy.Publisher('estimate',Point,queue_size=5,latch=True)
         self.vel_cmd_sub_ = rospy.Subscriber('velCmd', Point, self.velCmdCallback, queue_size=5)
@@ -21,19 +22,22 @@ class CntrlPx4:
     
     def velCmdCallback(self,msg):
         self.velCmd = [msg.x,msg.y,msg.z]
-        self.update_control()
+        # self.update_control()
 
     def positionMeasurementCallback(self,msg):
         time = np.array(msg.header.stamp.sec) + np.array(msg.header.stamp.nsec*1E-9)
-        q = Quaternion(msg.pose.orientation.w,msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z)
-        positionBody = PositionBody(msg.pose.position.x,msg.pose.position.y,msg.pose.position.z)
-        #Todo: need to get the actual covariance matrix
-        covarianceMatrix = ['Nan']
-        poseCovariance = Covariance(covarianceMatrix)
-        self.pose = AttitudePositionMocap(time,q,positionBody,poseCovariance)
+        # q = Quaternion(msg.pose.orientation.w,msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z)
+        # positionBody = PositionBody(msg.pose.position.x,msg.pose.position.y,msg.pose.position.z)
+        # #Todo: need to get the actual covariance matrix
+        # covarianceMatrix = ['Nan']
+        # poseCovariance = Covariance(covarianceMatrix)
+        # self.pose = AttitudePositionMocap(time,q,positionBody,poseCovariance)
 
-    def publish_estimate(self,estimate):
-        self.estimate_pub_.publish(estimate)
+    def publish_estimate(self,position_body):
+        self.estimate.x = position_body.x_m
+        self.estimate.y = position_body.y_m
+        self.estimate.z = position_body.z_m
+        self.estimate_pub_.publish(self.estimate)
 
     async def run(self):
         """ Does Offboard control using velocity NED coordinates. """
@@ -63,13 +67,17 @@ class CntrlPx4:
             await self.drone.action.disarm()
             return
 
-        asyncio.create_task(self.run_time_task())
+        async for odom in self.drone.telemetry.odometry():
+            self.publish_estimate(odom.position_body)
 
-    async def update_control(self):
-        await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.cmdVel[0],self.cmdVel[1],self.cmdVel[2], 0.0))
 
-    async def run_time_task(self):
-        await get estimate
+    #     asyncio.create_task(self.run_time_task())
+
+    # async def update_control(self):
+    #     await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.cmdVel[0],self.cmdVel[1],self.cmdVel[2], 0.0))
+
+    # async def run_time_task(self):
+    #     await get estimate
 
 if __name__ == "__main__":
     rospy.init_node('control_px4', anonymous=True)
