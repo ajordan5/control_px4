@@ -12,7 +12,7 @@ from ublox.msg import RelPos
 class Pose2Ublox_Ros():
     def __init__(self):
         self.load_set_parameters()
-        self.m2u = Pose2Ublox(self.Ts, self.global_horizontal_accuracy, \
+        self.p2u = Pose2Ublox(self.Ts, self.global_horizontal_accuracy, \
             self.global_vertical_accuracy, self.global_speed_accuracy, \
             self.relative_horizontal_accuracy, self.relative_vertical_accuracy, \
             self.relative_speed_accuracy, self.accHeading, self.noise_on, self.ref_lla, self.sigma_rover_pos, \
@@ -27,10 +27,6 @@ class Pose2Ublox_Ros():
         
         # Timer
         self.ublox_rate_timer_ = rospy.Timer(rospy.Duration(self.Ts), self.ubloxRateCallback)
-
-        while not rospy.is_shutdown():
-            # wait for new messages and call the callback when they arrive
-            rospy.spin()
     
     def ubloxRateCallback(self, event):
         #publishes all the messages together like ublox would
@@ -41,10 +37,10 @@ class Pose2Ublox_Ros():
         self.prev_time = current_time
 
         #update messages
-        self.m2u.update_rover_virtual_PosVelEcef(dt)
-        self.m2u.update_rover_virtual_relPos()
-        self.m2u.update_compass_virtual_relPos()
-        self.m2u.update_base_virtual_PosVelEcef(dt)
+        self.p2u.update_rover_virtual_PosVelEcef(dt)
+        self.p2u.update_rover_virtual_relPos()
+        self.p2u.update_compass_virtual_relPos()
+        self.p2u.update_base_virtual_PosVelEcef(dt)
 
         #publish messages
         self.publish_rover_virtual_PosVelEcef(time_stamp)
@@ -57,10 +53,10 @@ class Pose2Ublox_Ros():
         self.rover_PosVelEcef.header.stamp = time_stamp
         self.rover_PosVelEcef.fix = 3
         # # self.rover_PosVelEcef.lla = self.rover_lla  #lla is not currently being used            
-        self.rover_PosVelEcef.position = self.m2u.rover_virtual_pos_ecef
+        self.rover_PosVelEcef.position = self.p2u.rover_virtual_pos_ecef
         self.rover_PosVelEcef.horizontal_accuracy = self.global_horizontal_accuracy
         self.rover_PosVelEcef.vertical_accuracy = self.global_vertical_accuracy
-        self.rover_PosVelEcef.velocity = self.m2u.rover_virtual_vel_ecef
+        self.rover_PosVelEcef.velocity = self.p2u.rover_virtual_vel_ecef
         self.rover_PosVelEcef.speed_accuracy = self.global_speed_accuracy
 
         self.rover_virtual_PosVelEcef_pub_.publish(self.rover_PosVelEcef)
@@ -69,9 +65,9 @@ class Pose2Ublox_Ros():
     def publish_rover_virtual_relPos(self):
 
         self.rover_relPos.header.stamp = rospy.Time.now()
-        self.rover_relPos.relPosNED[0] = self.m2u.rover_virtual_relpos[0]
-        self.rover_relPos.relPosNED[1] = self.m2u.rover_virtual_relpos[1]
-        self.rover_relPos.relPosNED[2] = self.m2u.rover_virtual_relpos[2]
+        self.rover_relPos.relPosNED[0] = self.p2u.rover_virtual_relpos[0]
+        self.rover_relPos.relPosNED[1] = self.p2u.rover_virtual_relpos[1]
+        self.rover_relPos.relPosNED[2] = self.p2u.rover_virtual_relpos[2]
 
         self.rover_virtual_relpos_pub_.publish(self.rover_relPos)
 
@@ -80,10 +76,10 @@ class Pose2Ublox_Ros():
         self.base_PosVelEcef.header.stamp = time_stamp
         self.base_PosVelEcef.fix = 3
         # # self.base_PosVelEcef.lla = self.base_lla  #lla is not currently being used            
-        self.base_PosVelEcef.position = self.m2u.base_virtual_pos_ecef
+        self.base_PosVelEcef.position = self.p2u.base_virtual_pos_ecef
         self.base_PosVelEcef.horizontal_accuracy = self.global_horizontal_accuracy
         self.base_PosVelEcef.vertical_accuracy = self.global_vertical_accuracy
-        self.base_PosVelEcef.velocity = self.m2u.base_virtual_vel_ecef
+        self.base_PosVelEcef.velocity = self.p2u.base_virtual_vel_ecef
         self.base_PosVelEcef.speed_accuracy = self.global_speed_accuracy
 
         self.base_virtual_PosVelEcef_pub_.publish(self.base_PosVelEcef)
@@ -91,7 +87,7 @@ class Pose2Ublox_Ros():
     
     def publish_compass_virtual_relPos(self):
 
-        self.compass_relPos.relPosHeading = self.m2u.compass_heading
+        self.compass_relPos.relPosHeading = self.p2u.compass_heading
         self.compass_relPos.accHeading = self.accHeading
         self.compass_virtual_relPos_pub_.publish(self.compass_relPos)
 

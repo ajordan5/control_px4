@@ -70,7 +70,6 @@ class Pose2Ublox():
         self.base_virtual_vel_ecef = np.zeros(3)
         self.compass_heading = 0.0
 
-
     def update_rover_virtual_PosVelEcef(self, dt):
 
         #calculate virtual position in ecef frame with noise
@@ -95,17 +94,13 @@ class Pose2Ublox():
         self.rover_vel_prev = rover_vel
         self.rover_vel_noise_prev = self.rover_vel_noise
 
-
-
     def update_rover_virtual_relPos(self):
-
         #calculate virtual relative position of the rover with respect to the base in ned frame with noise.
         relpos_array = self.rover_ned - self.base_ned
         rover_relpos_noise = self.add_noise_3d(relpos_array, self.relpos_std_dev_3d)
         self.rover_relpos_lpf = self.lpf(rover_relpos_noise, self.rover_relpos_lpf, self.Ts, self.sigma_rover_relpos)
 
         self.rover_virtual_relpos = self.rover_relpos_lpf
-
 
     def update_base_virtual_PosVelEcef(self, dt):
 
