@@ -1,6 +1,8 @@
 import numpy as np
 import rospy
 from geometry_msgs.msg import Point
+from nav_msgs.msg import Odometry
+from ublox.msg import RelPos
 from std_msgs.msg import Bool
 
 
@@ -25,21 +27,24 @@ class StateMachine:
         self.boatNed = [0.0,0.0,0.0]
 
         self.hlcMsg = Point()
+        self.errorMsg = Point()
         self.beginLandingRoutineMsg = Bool()
 
-        self.boat_sub_ = rospy.Subscriber('boat_pos', Point, self.boatCallback, queue_size=5)
-        self.rover_sub_ = rospy.Subscriber('rover_pos',Point,self.roverCallback,queue_size=5)
+        self.relPos_sub_ = rospy.Subscriber('relPos', RelPos, self.relPosCallback, queue_size=5)
+        self.odom_sub_ = rospy.Subscriber('odom',Odometry,self.odomCallback, queue_size=5)
         self.hlc_pub_ = rospy.Publisher('hlc',Point,queue_size=5,latch=True)
+        self.error_pub_ = rospy.Publisher('error',Point,queue_size=5,latch=True)
         self.begin_landing_routine_pub_ = rospy.Publisher('begin_landing_routine',Bool,queue_size=5,latch=True)
 
         while not rospy.is_shutdown():
             rospy.spin()
 
-    def boatCallback(self,msg):
-        self.boatNed = [msg.x,msg.y,msg.z]
+    def relPosCallback(self,msg):
+        self.relPos = [msg.x,msg.y,msg.z]
+        self.update_hlc()
 
-    def roverCallback(self,msg):
-        self.roverNed = [msg.x,msg.y,msg.z]
+    def odomCallback(self,msg):
+        self.odom = [msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z]
         self.update_hlc()
 
     def update_hlc(self):
@@ -55,7 +60,8 @@ class StateMachine:
     def fly_mission(self):
         self.hlc = self.firstWaypoint
         self.publish_hlc()
-        error = np.linalg.norm(np.array(self.hlc)-np.array(self.roverNed))
+        error = np.linalg.norm(np.array(self.hlc)-np.array(self.odom))
+        self.publish_error()
         if error < self.rendevousThreshold:
             self.missionState = 1
             print('rendevous state')
@@ -63,22 +69,26 @@ class StateMachine:
             self.begin_landing_routine_pub_.publish(self.beginLandingRoutineMsg)
         
     def rendevous(self):
-        self.hlc = np.array(self.boatNed) + np.array([0.0,0.0,self.descendHeight]) + np.array(self.antennaOffset)
+        error = np.array(self.relPos) + np.array([0.0,0.0,self.descendHeight]) + np.array(self.antennaOffset)
+        self.publish_error(error)
+        self.hlc = error + np.array(self.odom)
         self.publish_hlc()
-        error = np.linalg.norm(np.array(self.hlc)-np.array(self.roverNed))
-        if error < self.descendThreshold:
+        if np.linalg.norm(error) < self.descendThreshold:
             self.missionState = 2
             print('descend state')
 
     def descend(self):
-        self.hlc = np.array(self.boatNed) + np.array([0.0,0.0,self.landingHeight]) + np.array(self.antennaOffset)
+        error = np.array(self.relPos) + np.array([0.0,0.0,self.landingHeight]) + np.array(self.antennaOffset)
+        self.publish_error(error)
+        self.hlc = error + np.array(self.odom)
         self.publish_hlc()
-        error = np.linalg.norm(np.array(self.hlc)-np.array(self.roverNed))
-        if error < self.landingThreshold:
+        if np.linalg.norm(error) < self.landingThreshold:
             self.missionState = 3
             print('land state')
 
     def land(self):
+        error = np.array(self.relPos) + np.array(self.antennaOffset)
+        self.publish_error(error)
         self.hlc = np.array(self.boatNed) + np.array([0.0,0.0,1.0]) + np.array(self.antennaOffset) #multirotor attemptes to drive itself into the platform 1 meter deep.
         self.publish_hlc()
 
@@ -87,6 +97,12 @@ class StateMachine:
         self.hlcMsg.y = self.hlc[1]
         self.hlcMsg.z = self.hlc[2]
         self.hlc_pub_.publish(self.hlcMsg)
+
+    def publish_error(self,error):
+        self.errorMsg.x = error[0]
+        self.errorMsg.y = error[1]
+        self.errorMsg.z = error[2]
+        self.error_pub_.publish(self.errorMsg)
 
 if __name__ == "__main__":
     rospy.init_node('state_machine', anonymous=True)
