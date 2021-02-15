@@ -1,8 +1,9 @@
 <?xml version="1.0"?>
 
 <launch>
+    <node name="listener" pkg="listener" type="listener_node" output="screen"/>
     <group ns="p2u">
-        <rosparam command="load" file="$(find control_px4)/params/pose2ublox.yaml"/>
+        <rosparam command="load" file="$(find control_px4)/params/px4_2ublox.yaml"/>
         <node name="px4_2ublox" pkg="control_px4" type="px4_2ublox.py" output="screen"/>
     </group>
 </launch>
