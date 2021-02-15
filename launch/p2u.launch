@@ -9,4 +9,13 @@
             <remap from="/base_pose" to="/base_pose"/> -->
         </node>
     </group>
+    <!-- Not using nav node until we need to-->
+    <!-- <node name="nav" pkg="control_px4" type="nav.py" output="screen">
+    </node> -->
+    <node name="state_machine" pkg="control_px4" type="state_machine.py" output="screen">
+    </node>
+    <node name="velocity_controller" pkg="control_px4" type="vel_controller.py" output="screen">
+    </node>
+    <node name="control_px4" pkg="control_px4" type="control_px4.py" output="screen">
+    </node>
 </launch>

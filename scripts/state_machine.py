@@ -1,6 +1,9 @@
+#!/usr/bin/env python3
+
 import numpy as np
 import rospy
 from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Point
 from nav_msgs.msg import Odometry
 from ublox.msg import RelPos
 from std_msgs.msg import Bool
@@ -30,7 +33,7 @@ class StateMachine:
         self.beginLandingRoutineMsg = Bool()
 
         self.relPos_sub_ = rospy.Subscriber('relPos', RelPos, self.relPosCallback, queue_size=5)
-        self.odom_sub_ = rospy.Subscriber('odom',Odometry,self.odomCallback, queue_size=5)
+        self.odom_sub_ = rospy.Subscriber('odom',Point,self.odomCallback, queue_size=5)
         self.hlc_pub_ = rospy.Publisher('hlc',PoseStamped,queue_size=5,latch=True)
         self.begin_landing_routine_pub_ = rospy.Publisher('begin_landing_routine',Bool,queue_size=5,latch=True)
 
@@ -41,7 +44,7 @@ class StateMachine:
         self.relPos = [msg.x,msg.y,msg.z]
 
     def odomCallback(self,msg):
-        self.odom = [msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z]
+        self.odom = [msg.x,msg.y,msg.z]
         self.update_hlc()
 
     def update_hlc(self):
@@ -89,7 +92,7 @@ class StateMachine:
         self.hlcMsg.pose.position.x = self.hlc[0]
         self.hlcMsg.pose.position.y = self.hlc[1]
         self.hlcMsg.pose.position.z = self.hlc[2]
-        self.hlcMsg.header.stamp = ropy.Time.now()
+        self.hlcMsg.header.stamp = rospy.Time.now()
         self.hlc_pub_.publish(self.hlcMsg)
 
 if __name__ == "__main__":

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 #Not using this, until we have a need to
 import rospy
 from ublox.msg import RelPos
