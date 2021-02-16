@@ -42,9 +42,13 @@ class Nav:
         # self.rover_extrapolated_relPos_pub_.publish(msg)
     
     def basePosVelEcefCallback(self,msg):
-        self.baseVelocity.x = msg.velocity[0]
-        self.baseVelocity.y = msg.velocity[1]
-        self.baseVelocity.z = msg.velocity[2]
+        if not self.refLlaSet:
+            return
+        baseVelocityEcef = [msg.velocity[0],msg.velocity[1],msg.velocity[2]]
+        baseVelocityNed = navpy.ecef2ned(baseVelocityEcef,self.lat_ref,self.lon_ref,self.alt_ref)
+        self.baseVelocity.x = baseVelocityNed[0]
+        self.baseVelocity.y = baseVelocityNed[1]
+        self.baseVelocity.z = baseVelocityNed[2]
         self.base_velocity_pub_.publish(self.baseVelocity)
 
     def posVelEcefCallback(self,msg):

@@ -20,27 +20,27 @@ class VelCntrl:
 
         kpN = 1.0
         kiN = 0.0
-        kdN = 0.0
-        tauN = 0.0
+        kdN = 0.2
+        tauN = 0.05
         maxNDot = 8.0
         self.northPid = PID(kpN,kiN,kdN,tauN,maxNDot)
-        self.kffN = 0.0 #1.0+kdN
+        self.kffN = 1.0+kdN
 
         kpE = 1.0
         kiE = 0.0
-        kdE = 0.0
-        tauE = 0.0
+        kdE = 0.2
+        tauE = 0.05
         maxEDot = 8.0
         self.eastPid = PID(kpE,kiE,kdE,tauE,maxEDot)
-        self.kffE = 0.0 #1.0+kdE
+        self.kffE = 1.0+kdE
 
         kpD = 1.0
         kiD = 0.0
-        kdD = 0.0
-        tauD = 0.0
+        kdD = 0.2
+        tauD = 0.05
         maxDDot = 8.0
         self.downPid = PID(kpD,kiD,kdD,tauD,maxDDot)
-        self.kffD = 0.0 #1.0+kdD
+        self.kffD = 1.0+kdD
 
         self.velCmd = Point()
 
