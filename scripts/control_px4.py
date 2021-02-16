@@ -15,6 +15,7 @@ from std_msgs.msg import Bool
 class CntrlPx4:
     def __init__(self):
         self.velCmd = [0.0,0.0,0.0]
+        self.prevPoseTime = 0.0
         self.estimate = Point()
 
         self.estimate_pub_ = rospy.Publisher('estimate',Point,queue_size=5,latch=True)
@@ -25,7 +26,7 @@ class CntrlPx4:
         self.velCmd = [msg.x,msg.y,msg.z]
         # self.update_control()
 
-    async def positionMeasurementCallback(self,msg):
+    def positionMeasurementCallback(self,msg):
         time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #check that this is what is needed
         q = Quaternion(1.0,0.0,0.0,0.0) #GPS has not orientation information.  Reflect an infinite covariance for orientation
         positionBody = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
@@ -33,7 +34,7 @@ class CntrlPx4:
         covarianceMatrix = ['Nan']
         poseCovariance = Covariance(covarianceMatrix)
         self.pose = AttitudePositionMocap(time,q,positionBody,poseCovariance)
-        await self.drone.offboard.set_attitude_position_mocap(self.pose)
+        # await self.drone.offboard.set_attitude_position_mocap(self.pose)
 
     def publish_estimate(self,position_body):
         self.estimate.x = position_body.x_m
@@ -69,8 +70,15 @@ class CntrlPx4:
             await self.drone.action.disarm()
             return
 
+        asyncio.create_task(self.offboard_position_measurement_callback())
         async for odom in self.drone.telemetry.odometry():
             self.publish_estimate(odom.position_body)
+
+    async def offboard_position_measurement_callback(self):
+        while(1):
+            if self.pose.time_usec != self.prevPoseTime:
+                await self.drone.offboard.set_attitude_position_mocap(self.pose)
+            self.prevPoseTime = self.pose.time_usec
 
     # async def update_position(self):
     #     await self.drone.offboard.set_attitude_position_mocap(self.pose)
