@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 import rospy
+import navpy
 import numpy as np
+import math
 from geometry_msgs.msg import Point
+from geometry_msgs.msg import PoseWithCovarianceStamped
 from ublox.msg import RelPos
 from ublox.msg import PosVelEcef
 
@@ -10,7 +13,9 @@ class Nav:
     def __init__(self):
         self.baseVelocity = Point()
         self.relPos = Point()
-        self.lla = Point()
+        self.pose_update = PoseWithCovarianceStamped()
+
+        self.refLlaSet = False
 
         #TODO we may need to speed up command inputs in order to have good performance.
         #this node can be used to extrapolate relpos messages given rover estimate updates.
@@ -18,7 +23,7 @@ class Nav:
         # self.rover_extrapolated_relPos_pub_ = rospy.Publisher('extrap_relPos', RelPos, queue_size=5, latch=True)
         self.rover_relPos_stripped_pub_ = rospy.Publisher('relPos_stripped', Point, queue_size=5, latch=True)
         self.base_velocity_pub_ = rospy.Publisher('base_velocity', Point, queue_size=5, latch=True)
-        self.lla_pub_ = rospy.Publisher('ublox_lla', Point, queue_size=5, latch=True)
+        self.pose_update_pub_ = rospy.Publisher('pose_update', PoseWithCovarianceStamped, queue_size=5, latch=True)
 
         self.rover_relPos_sub_ = rospy.Subscriber('rover_relPos', RelPos, self.roverRelPosCallback, queue_size=5)
         self.posVelEcef_sub_ = rospy.Subscriber('posVelEcef', PosVelEcef, self.posVelEcefCallback, queue_size=5)
@@ -43,10 +48,26 @@ class Nav:
         self.base_velocity_pub_.publish(self.baseVelocity)
 
     def posVelEcefCallback(self,msg):
-        self.lla.x = msg.lla[0]
-        self.lla.y = msg.lla[1]
-        self.lla.z = msg.lla[2]
-        self.lla_pub_.publish(self.lla)
+        if not self.refLlaSet:
+            self.lat_ref = msg.lla[0]
+            self.lon_ref = msg.lla[1]
+            self.alt_ref = msg.lla[2]
+            self.refLlaSet = True
+        ecef = msg.position
+        ned = navpy.ecef2ned(ecef,self.lat_ref,self.lon_ref,self.alt_ref)
+        covariance = np.zeros(36)
+        covariance[0] = msg.horizontal_accuracy
+        covariance[6] = msg.horizontal_accuracy
+        covariance[12] = msg.vertical_accuracy
+        covariance[18] = math.inf
+        covariance[24] = math.inf
+        covariance[30] = math.inf
+        self.pose_update.header = msg.header
+        self.pose_update.pose.pose.position.x = ned[0]
+        self.pose_update.pose.pose.position.y = ned[1]
+        self.pose_update.pose.pose.position.z = ned[2]
+        self.pose_update.pose.covariance = covariance
+        self.pose_update_pub_.publish(self.pose_update)
 
 if __name__ == '__main__':
     rospy.init_node('nav', anonymous=True)

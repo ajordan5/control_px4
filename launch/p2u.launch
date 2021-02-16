@@ -25,6 +25,6 @@
     </node>
     <node name="control_px4" pkg="control_px4" type="control_px4.py" output="screen">
         <remap from="velCmd" to="/vel_cmd"/>
-        <remap from="lla_measurement" to="/ublox_lla"/>
+        <remap from="position_measurement" to="/pose_update"/>
     </node>
 </launch>
