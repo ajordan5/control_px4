@@ -35,11 +35,21 @@ class CntrlPx4:
         # # q = Quaternion(1.0,0.0,0.0,0.0) #GPS has not orientation information.  Reflect an infinite covariance for orientation
         angleBody = AngleBody(0.0,0.0,0.0) #Currently no angle information is given
         positionBody = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
-        # #Todo: need to get the actual covariance matrix
-        covarianceMatrix = [0.1,0.0,0.0,0.0,0.0,0.0, 0.1,0.0,0.0,0.0,0.0, 0.1,0.0,0.0,0.0, 0.1,0.0,0.0, 0.1,0.0, 0.1]
+        covarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.pose.covariance)
         poseCovariance = Covariance(covarianceMatrix)
         self.pose = VisionPositionEstimate(time,positionBody,angleBody,poseCovariance)
         self.meas1_received = True
+
+    def convert_ros_covariance_to_px4_covariance(self,rosCov):
+        px4Cov = [0]*21
+        px4Cov[0:6] = rosCov[0:6]
+        px4Cov[6:11] = rosCov[7:12]
+        px4Cov[11:15] = rosCov[14:18]
+        px4Cov[15:18] = rosCov[21:24]
+        px4Cov[18:20] = rosCov[28:30]
+        px4Cov[20] = rosCov[35]
+        print('px4Cov = ', px4Cov)
+        return px4Cov
 
     def publish_estimate(self,odom):
         time = odom.time_usec*1E-6
@@ -63,6 +73,7 @@ class CntrlPx4:
         self.estimateMsg.twist.twist.angular.y = odom.angular_velocity_body.pitch_rad_s
         self.estimateMsg.twist.twist.angular.z = odom.angular_velocity_body.yaw_rad_s
         self.estimateMsg.twist.covariance = self.convert_px4_covariance_to_ros_covariance(odom.velocity_covariance.covariance_matrix)
+        print('frame = ', odom.frame_id.value)
 
         self.estimate_pub_.publish(self.estimateMsg)
 
@@ -88,20 +99,22 @@ class CntrlPx4:
                 print(f"Drone discovered with UUID: {state.uuid}")
                 break
 
-        # print('getting parameter')
-        # aidMask = await self.drone.param.get_param_int('EKF2_AID_MASK')
-        # print('aidMask = ', aidMask)
+        print('getting parameter')
+        aidMask = await self.drone.param.get_param_int('EKF2_AID_MASK')
+        print('aidMask = ', aidMask)
         print('setting aid mask parameter')
         await self.drone.param.set_param_int('EKF2_AID_MASK',8)
-        # print('getting parameter')
-        # aidMask = await self.drone.param.get_param_int('EKF2_AID_MASK')
-        # print('aidMask = ', aidMask)
+        # await self.drone.param.set_param_int('EKF2_AID_MASK',1)
+        print('getting parameter')
+        aidMask = await self.drone.param.get_param_int('EKF2_AID_MASK')
+        print('aidMask = ', aidMask)
 
         # print('getting parameter')
         # height_mode = await self.drone.param.get_param_int('EKF2_HGT_MODE')
         # print('height_mode = ', height_mode)
         print('setting height mode parameter')
-        await self.drone.param.set_param_int('EKF2_HGT_MODE',3)
+        # await self.drone.param.set_param_int('EKF2_HGT_MODE',0) #barometer is primary altitude sensor
+        await self.drone.param.set_param_int('EKF2_HGT_MODE',3) #extern meas is primary altitude sensor
         # print('getting parameter')
         # height_mode = await self.drone.param.get_param_int('EKF2_HGT_MODE')
         # print('height_mode = ', height_mode)
@@ -137,27 +150,29 @@ class CntrlPx4:
         print("Start updating position")
         asyncio.create_task(self.input_meas_output_est())
 
-        # print("-- Arming")
-        # await self.drone.action.arm()
+        await asyncio.sleep(15)
 
-        # print("-- Setting initial setpoint")
-        # await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
+        print("-- Arming")
+        await self.drone.action.arm()
 
-        # print("-- Starting offboard")
-        # try:
-        #     await self.drone.offboard.start()
-        # except OffboardError as error:
-        #     print(f"Starting offboard mode failed with error code: \
-        #         {error._result.result}")
-        #     print("-- Disarming")
-        #     await self.drone.action.disarm()
-        #     return
+        print("-- Setting initial setpoint")
+        await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
 
-        # print("-- Go up 2 m/s")
-        # await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, -2.0, 0.0))
-        # await asyncio.sleep(2)
+        print("-- Starting offboard")
+        try:
+            await self.drone.offboard.start()
+        except OffboardError as error:
+            print(f"Starting offboard mode failed with error code: \
+                {error._result.result}")
+            print("-- Disarming")
+            await self.drone.action.disarm()
+            return
 
-        # await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0,0.0,0.0,0.0))
+        print("-- Go up 2 m/s")
+        await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, -2.0, 0.0))
+        await asyncio.sleep(2)
+
+        await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0,0.0,0.0,0.0))
 
         # asyncio.create_task(self.offboard_velocity_command_callback())
 

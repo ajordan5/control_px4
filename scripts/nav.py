@@ -56,11 +56,11 @@ class Nav:
         ned = navpy.lla2ned(msg.lla[0],msg.lla[1],msg.lla[2],self.lat_ref,self.lon_ref,self.alt_ref)
         covariance = np.zeros(36)
         covariance[0] = msg.horizontal_accuracy
-        covariance[6] = msg.horizontal_accuracy
-        covariance[12] = msg.vertical_accuracy
-        covariance[18] = math.inf
-        covariance[24] = math.inf
-        covariance[30] = math.inf
+        covariance[7] = msg.horizontal_accuracy
+        covariance[14] = msg.vertical_accuracy
+        covariance[21] = 1000000 #essentially infinite
+        covariance[28] = 1000000
+        covariance[35] = 1000000 
         self.pose_update.header = msg.header
         self.pose_update.pose.pose.position.x = ned[0]
         self.pose_update.pose.pose.position.y = ned[1]
