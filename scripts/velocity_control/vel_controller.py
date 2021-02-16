@@ -2,6 +2,7 @@
 import rospy
 import numpy as np
 
+from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Bool
@@ -18,33 +19,33 @@ class VelCntrl:
         self.beginLandingroutine = False
 
         kpN = 1.0
-        kiN = 0.1
-        kdN = 0.2
+        kiN = 0.0
+        kdN = 0.0
         tauN = 0.0
         maxNDot = 8.0
         self.northPid = PID(kpN,kiN,kdN,tauN,maxNDot)
-        self.kffN = 1.0+kdN
+        self.kffN = 0.0 #1.0+kdN
 
         kpE = 1.0
-        kiE = 0.1
-        kdE = 0.2
+        kiE = 0.0
+        kdE = 0.0
         tauE = 0.0
         maxEDot = 8.0
         self.eastPid = PID(kpE,kiE,kdE,tauE,maxEDot)
-        self.kffE = 1.0+kdE
+        self.kffE = 0.0 #1.0+kdE
 
         kpD = 1.0
-        kiD = 0.1
-        kdD = 0.2
+        kiD = 0.0
+        kdD = 0.0
         tauD = 0.0
         maxDDot = 8.0
         self.downPid = PID(kpD,kiD,kdD,tauD,maxDDot)
-        self.kffD = 1.0+kdD
+        self.kffD = 0.0 #1.0+kdD
 
         self.velCmd = Point()
 
         self.vel_cmd_pub_ = rospy.Publisher('vel_cmd',Point,queue_size=5,latch=True)
-        self.odom_sub_ = rospy.Subscriber('odom',Point,self.odomCallback,queue_size=5)
+        self.odom_sub_ = rospy.Subscriber('odom',Odometry,self.odomCallback,queue_size=5)
         self.hlc_sub_ = rospy.Subscriber('hlc', PoseStamped, self.hlcCallback, queue_size=5) 
         self.boat_vel_sub_ = rospy.Subscriber('base_vel', Point, self.boatVelCallback, queue_size=5)
         self.begin_landing_routine_sub_ = rospy.Subscriber('begin_landing_routine', Bool, self.beginLandingroutineCallback, queue_size=5)
@@ -53,13 +54,12 @@ class VelCntrl:
             rospy.spin()
 
     def odomCallback(self,msg):
-        self.odom = [msg.x,msg.y,msg.z]
-        #todo: I should probably do the updates through the odom callback rather than hlc.  Also I should grab time from here, since it would be coming from the px4.
+        self.odom = [msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z]
+        self.time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9)
+        self.update_control()
 
     def hlcCallback(self,msg):
         self.hlc = [msg.pose.position.x,msg.pose.position.y,msg.pose.position.z]
-        self.time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9)
-        self.update_control()
     
     def boatVelCallback(self,msg):
         self.baseVel = [msg.x,msg.y,msg.z]

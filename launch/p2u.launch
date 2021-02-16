@@ -21,6 +21,7 @@
         <remap from="odom" to="/estimate"/>
     </node>
     <node name="velocity_controller" pkg="control_px4" type="vel_controller.py" output="screen">
+        <remap from="odom" to="/estimate"/>
         <remap from="hlc" to="/hlc"/>
         <remap from="base_vel" to="base_velocity"/>
         <remap from="begin_landing_routine" to="/begin_landing_routine"/>

@@ -20,6 +20,7 @@ class CntrlPx4:
         self.prevPoseTime = 0.0
         self.estimateMsg = Odometry()
         self.meas1_received = False
+        self.startMission = False
 
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
         self.vel_cmd_sub_ = rospy.Subscriber('velCmd', Point, self.velCmdCallback, queue_size=5)
@@ -166,12 +167,14 @@ class CntrlPx4:
             await self.drone.action.disarm()
             return
 
-        print("-- Go up 2 m/s")
-        await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, -2.0, 0.0))
-        await asyncio.sleep(5)
+        # print("-- Go up 2 m/s")
+        # await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, -2.0, 0.0))
+        # await asyncio.sleep(5)
 
-        await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0,0.0,0.0,0.0))
+        # await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0,0.0,0.0,0.0))
 
+        print('Start Mission')
+        self.startMission = True
         # asyncio.create_task(self.offboard_velocity_command_callback())
 
     async def input_meas_output_est(self):
@@ -180,6 +183,9 @@ class CntrlPx4:
             if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await self.drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
+            if self.velCmd != self.prevVelCmd and self.startMission:
+                await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
+                self.prevVelCmd = self.velCmd
 
     async def offboard_velocity_command_callback(self):
         while(1):

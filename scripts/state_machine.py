@@ -28,6 +28,7 @@ class StateMachine:
 
         self.roverNed = [0.0,0.0,0.0]
         self.boatNed = [0.0,0.0,0.0]
+        self.rover2BaseRelPos = [0.0,0.0,0.0]
 
         self.hlcMsg = PoseStamped()
         self.beginLandingRoutineMsg = Bool()
@@ -41,7 +42,7 @@ class StateMachine:
             rospy.spin()
 
     def relPosCallback(self,msg):
-        self.relPos = [msg.x,msg.y,msg.z]
+        self.rover2BaseRelPos = [-msg.x,-msg.y,-msg.z]
 
     def odomCallback(self,msg):
         self.odom = [msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z]
@@ -68,7 +69,7 @@ class StateMachine:
             self.begin_landing_routine_pub_.publish(self.beginLandingRoutineMsg)
         
     def rendevous(self):
-        error = np.array(self.relPos) + np.array([0.0,0.0,self.descendHeight]) + np.array(self.antennaOffset)
+        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.descendHeight]) + np.array(self.antennaOffset)
         self.hlc = error + np.array(self.odom)
         self.publish_hlc()
         if np.linalg.norm(error) < self.descendThreshold:
@@ -76,7 +77,7 @@ class StateMachine:
             print('descend state')
 
     def descend(self):
-        error = np.array(self.relPos) + np.array([0.0,0.0,self.landingHeight]) + np.array(self.antennaOffset)
+        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.landingHeight]) + np.array(self.antennaOffset)
         self.hlc = error + np.array(self.odom)
         self.publish_hlc()
         if np.linalg.norm(error) < self.landingThreshold:
@@ -84,7 +85,7 @@ class StateMachine:
             print('land state')
 
     def land(self):
-        error = np.array(self.relPos) + np.array([0.0,0.0,1.0]) + np.array(self.antennaOffset)
+        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,1.0]) + np.array(self.antennaOffset)
         self.hlc = error + np.array(self.odom) #multirotor attemptes to drive itself into the platform 1 meter deep.
         self.publish_hlc()
 
