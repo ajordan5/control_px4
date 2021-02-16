@@ -15,6 +15,7 @@ from std_msgs.msg import Bool
 class CntrlPx4:
     def __init__(self):
         self.velCmd = [0.0,0.0,0.0]
+        self.prevVelCmd = [0.0,0.0,0.0]
         self.prevPoseTime = 0.0
         self.estimate = Point()
 
@@ -31,7 +32,7 @@ class CntrlPx4:
         q = Quaternion(1.0,0.0,0.0,0.0) #GPS has not orientation information.  Reflect an infinite covariance for orientation
         positionBody = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
         #Todo: need to get the actual covariance matrix
-        covarianceMatrix = ['Nan']
+        covarianceMatrix = float('nan')
         poseCovariance = Covariance(covarianceMatrix)
         self.pose = AttitudePositionMocap(time,q,positionBody,poseCovariance)
         # await self.drone.offboard.set_attitude_position_mocap(self.pose)
@@ -70,15 +71,27 @@ class CntrlPx4:
             await self.drone.action.disarm()
             return
 
+        print("-- Go up 2 m/s")
+        await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, -2.0, 0.0))
+        await asyncio.sleep(4)
+
         asyncio.create_task(self.offboard_position_measurement_callback())
+        # asyncio.create_task(self.offboard_velocity_command_callback())
         async for odom in self.drone.telemetry.odometry():
             self.publish_estimate(odom.position_body)
 
     async def offboard_position_measurement_callback(self):
         while(1):
             if self.pose.time_usec != self.prevPoseTime:
+                print('self.pose = ', self.pose)
                 await self.drone.offboard.set_attitude_position_mocap(self.pose)
-            self.prevPoseTime = self.pose.time_usec
+                self.prevPoseTime = self.pose.time_usec
+
+    async def offboard_velocity_command_callback(self):
+        while(1):
+            if self.velCmd != self.prevVelCmd:
+                await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
+                self.prevVelCmd = self.velCmd
 
     # async def update_position(self):
     #     await self.drone.offboard.set_attitude_position_mocap(self.pose)

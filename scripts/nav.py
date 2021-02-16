@@ -54,6 +54,8 @@ class Nav:
             self.alt_ref = msg.lla[2]
             self.refLlaSet = True
         ecef = msg.position
+        print("ecef = ", ecef)
+        print("lla = ", self.lat_ref, ", ", self.lon_ref, ", ", self.alt_ref)
         ned = navpy.ecef2ned(ecef,self.lat_ref,self.lon_ref,self.alt_ref)
         covariance = np.zeros(36)
         covariance[0] = msg.horizontal_accuracy

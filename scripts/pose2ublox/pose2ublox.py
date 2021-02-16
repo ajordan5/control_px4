@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import navpy
 import numpy as np
 
 
@@ -34,7 +35,7 @@ class Pose2Ublox():
         #calc ref_ecef from ref_lla
         self.F = (self.A - self.B)/self.A     # Ellipsoid Flatness
         self.E2 = self.F * (2.0 - self.F);    # Square of Eccentricity    
-        self.ref_ecef = self.lla2ecef(self.ref_lla)
+        self.ref_ecef = navpy.lla2ecef(self.ref_lla[0],self.ref_lla[1],self.ref_lla[2])
 
         #combine standard deviations
         self.ned_std_dev_3d = [self.global_horizontal_accuracy, self.global_horizontal_accuracy, self.global_vertical_accuracy]
@@ -64,6 +65,7 @@ class Pose2Ublox():
 
         #Outputs
         self.rover_virtual_pos_ecef = np.zeros(3)
+        self.rover_virtual_lla = self.ref_lla
         self.rover_virtual_vel_ecef = np.zeros(3)
         self.rover_virtual_relpos = np.zeros(3)
         self.base_virtual_pos_ecef = np.zeros(3)
@@ -75,8 +77,9 @@ class Pose2Ublox():
         #calculate virtual position in ecef frame with noise
         self.rover_ned_noise = self.add_gps_noise(self.white_noise_3d, self.rover_ned_noise, self.sigma_rover_pos)
         rover_ned_w_noise = self.rover_ned + self.rover_ned_noise 
-        virtual_delta_ecef = self.ned2ecef(rover_ned_w_noise, self.ref_lla)
+        virtual_delta_ecef = navpy.ned2ecef(rover_ned_w_noise,self.ref_lla[0],self.ref_lla[1],self.ref_lla[2]) #self.ned2ecef(rover_ned_w_noise, self.ref_lla)
         self.rover_virtual_pos_ecef = self.ref_ecef + virtual_delta_ecef
+        self.rover_virtual_lla = navpy.ecef2lla(self.rover_virtual_pos_ecef)
 
         #calculate virtual velocity in ecef frame with noise
         #make sure we do not divide by zero
@@ -87,7 +90,7 @@ class Pose2Ublox():
         self.rover_vel_noise = self.add_noise_3d(np.zeros(3), self.white_noise_3d)
         self.rover_vel_lpf = self.lpf(self.rover_vel_noise, self.rover_vel_noise_prev, self.Ts, self.sigma_rover_vel)
         rover_vel_w_noise = rover_vel + self.rover_vel_lpf
-        self.rover_virtual_vel_ecef = self.ned2ecef(rover_vel_w_noise, self.ref_lla)
+        self.rover_virtual_vel_ecef = navpy.ned2ecef(rover_vel_w_noise,self.ref_lla[0],self.ref_lla[1],self.ref_lla[2]) #self.ned2ecef(rover_vel_w_noise, self.ref_lla)
 
         #update histories
         self.rover_ned_prev = self.rover_ned
@@ -107,7 +110,7 @@ class Pose2Ublox():
         #calculate virtual position in ecef frame with noise
         self.base_ned_noise = self.add_gps_noise(self.white_noise_3d, self.base_ned_noise, self.sigma_base_pos)
         base_ned_w_noise = self.base_ned + self.base_ned_noise
-        virtual_delta_ecef = self.ned2ecef(base_ned_w_noise, self.ref_lla)
+        virtual_delta_ecef = navpy.ned2ecef(base_ned_w_noise,self.ref_lla[0],self.ref_lla[1],self.ref_lla[2]) #self.ned2ecef(base_ned_w_noise, self.ref_lla)
         self.base_virtual_pos_ecef = self.ref_ecef + virtual_delta_ecef
 
         #calculate virtual velocity in ecef frame with noise
@@ -119,7 +122,7 @@ class Pose2Ublox():
         self.base_vel_noise = self.add_noise_3d(np.zeros(3), self.white_noise_3d)
         self.base_vel_lpf = self.lpf(self.base_vel_noise, self.base_vel_noise_prev, self.Ts, self.sigma_base_vel)
         base_vel_w_noise = base_vel + self.base_vel_lpf
-        self.base_virtual_vel_ecef = self.ned2ecef(base_vel_w_noise, self.ref_lla)
+        self.base_virtual_vel_ecef = navpy.ned2ecef(base_vel_w_noise,self.ref_lla[0],self.ref_lla[1],self.ref_lla[2]) #self.ned2ecef(base_vel_w_noise, self.ref_lla)
 
         #update histories
         self.base_ned_prev = self.base_ned
@@ -168,36 +171,36 @@ class Pose2Ublox():
             return xt
 
 
-    def lla2ecef(self, lla):
+    # def lla2ecef(self, lla):
 
-        lat = lla[0]*np.pi/180
-        lon = lla[1]*np.pi/180
-        alt = lla[2]
-        sinp = np.sin(lat)
-        cosp = np.cos(lat)
-        sinl = np.sin(lon)
-        cosl = np.cos(lon)
-        e2 = self.E2
-        v = self.A/np.sqrt(1.0-e2*sinp*sinp)
+    #     lat = lla[0]*np.pi/180
+    #     lon = lla[1]*np.pi/180
+    #     alt = lla[2]
+    #     sinp = np.sin(lat)
+    #     cosp = np.cos(lat)
+    #     sinl = np.sin(lon)
+    #     cosl = np.cos(lon)
+    #     e2 = self.E2
+    #     v = self.A/np.sqrt(1.0-e2*sinp*sinp)
 
-        ecef = np.zeros(3)
-        ecef[0]=(v+alt)*cosp*cosl
-        ecef[1]=(v+alt)*cosp*sinl
-        ecef[2]=(v*(1.0-e2)+lla[2])*sinp
+    #     ecef = np.zeros(3)
+    #     ecef[0]=(v+alt)*cosp*cosl
+    #     ecef[1]=(v+alt)*cosp*sinl
+    #     ecef[2]=(v*(1.0-e2)+lla[2])*sinp
 
-        return ecef
+    #     return ecef
 
 
-    def ned2ecef(self, ned, lla):
+    # def ned2ecef(self, ned, lla):
         
-        lat = lla[0]
-        lon = lla[1]
+    #     lat = lla[0]
+    #     lon = lla[1]
 
-        #don't know why @ isn't working for matrix multiplication
-        # ecef = Ry(90)Rx(-lon)Ry(lat)ned
-        ecef = np.matmul(np.matmul(np.matmul(self.Ry(90.0),self.Rx(-lon)),self.Ry(lat)),ned)
+    #     #don't know why @ isn't working for matrix multiplication
+    #     # ecef = Ry(90)Rx(-lon)Ry(lat)ned
+    #     ecef = np.matmul(np.matmul(np.matmul(self.Ry(90.0),self.Rx(-lon)),self.Ry(lat)),ned)
 
-        return ecef
+    #     return ecef
 
 
     def Rx(self, theta):

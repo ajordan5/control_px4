@@ -52,7 +52,7 @@ class Pose2Ublox_Ros():
 
         self.rover_PosVelEcef.header.stamp = time_stamp
         self.rover_PosVelEcef.fix = 3
-        # # self.rover_PosVelEcef.lla = self.rover_lla  #lla is not currently being used            
+        self.rover_PosVelEcef.lla = self.p2u.rover_virtual_lla         
         self.rover_PosVelEcef.position = self.p2u.rover_virtual_pos_ecef
         self.rover_PosVelEcef.horizontal_accuracy = self.global_horizontal_accuracy
         self.rover_PosVelEcef.vertical_accuracy = self.global_vertical_accuracy
