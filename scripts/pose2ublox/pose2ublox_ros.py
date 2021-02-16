@@ -29,6 +29,9 @@ class Pose2Ublox_Ros():
         self.ublox_rate_timer_ = rospy.Timer(rospy.Duration(self.Ts), self.ubloxRateCallback)
     
     def ubloxRateCallback(self, event):
+        if not self.receivedPose:
+            return
+            
         #publishes all the messages together like ublox would
         #TODO use event to get time
         time_stamp = rospy.Time.now()
@@ -93,6 +96,7 @@ class Pose2Ublox_Ros():
 
     
     def load_set_parameters(self):
+        self.receivedPose = False
 
         ublox_frequency = rospy.get_param('~ublox_frequency', 5.0)
         self.Ts = 1.0/ublox_frequency

@@ -7,6 +7,8 @@ from geometry_msgs.msg import PoseStamped
 class Px4_2Ublox(Pose2Ublox_Ros):
     def __init__(self):
         super().__init__()
+        self.receivedRoverPose = False
+        self.receivedBasePose = False
         # Subscribers
         self.rover_mocap_ned_sub_ = rospy.Subscriber('/rover_pose', PoseStamped, self.roverNedCallback, queue_size=5)
         self.base_mocap_ned_sub_ = rospy.Subscriber('/base_pose', PoseStamped, self.baseNedCallback, queue_size=5)
@@ -19,6 +21,10 @@ class Px4_2Ublox(Pose2Ublox_Ros):
         self.p2u.rover_ned = np.array([msg.pose.position.x,
                                    msg.pose.position.y,
                                    msg.pose.position.z])
+        if not self.receivedPose:
+            self.receivedRoverPose = True
+            if self.receivedBasePose:
+                self.receivedPose = True
 
     def baseNedCallback(self, msg):
         self.p2u.base_ned = np.array([msg.pose.position.x,
@@ -29,6 +35,11 @@ class Px4_2Ublox(Pose2Ublox_Ros):
                                         msg.pose.orientation.x,
                                         msg.pose.orientation.y,
                                         msg.pose.orientation.z])
+
+        if not self.receivedPose:
+            self.receivedBasePose = True
+            if self.receivedRoverPose:
+                self.receivedPose = True
         
 if __name__ == '__main__':
     rospy.init_node('px2u', anonymous=True)

@@ -48,7 +48,6 @@ class CntrlPx4:
         px4Cov[15:18] = rosCov[21:24]
         px4Cov[18:20] = rosCov[28:30]
         px4Cov[20] = rosCov[35]
-        print('px4Cov = ', px4Cov)
         return px4Cov
 
     def publish_estimate(self,odom):
@@ -73,7 +72,6 @@ class CntrlPx4:
         self.estimateMsg.twist.twist.angular.y = odom.angular_velocity_body.pitch_rad_s
         self.estimateMsg.twist.twist.angular.z = odom.angular_velocity_body.yaw_rad_s
         self.estimateMsg.twist.covariance = self.convert_px4_covariance_to_ros_covariance(odom.velocity_covariance.covariance_matrix)
-        print('frame = ', odom.frame_id.value)
 
         self.estimate_pub_.publish(self.estimateMsg)
 
@@ -148,9 +146,9 @@ class CntrlPx4:
         # print('ev_pos_z = ', ev_pos_z)
 
         print("Start updating position")
+        await asyncio.sleep(5)
         asyncio.create_task(self.input_meas_output_est())
-
-        await asyncio.sleep(15)
+        await asyncio.sleep(10)
 
         print("-- Arming")
         await self.drone.action.arm()
@@ -170,7 +168,7 @@ class CntrlPx4:
 
         print("-- Go up 2 m/s")
         await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, -2.0, 0.0))
-        await asyncio.sleep(2)
+        await asyncio.sleep(5)
 
         await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0,0.0,0.0,0.0))
 
