@@ -29,10 +29,8 @@ class CntrlPx4:
         # self.update_control()
 
     def positionMeasurementCallback(self,msg):
-        time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #check that this is what is needed
-        print('time raw = ', time)
+        time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this probably needs to be adjusted for the px4 time.
         time = int(round(time,6)*1E6)
-        print('time = ', time)
         # # q = Quaternion(1.0,0.0,0.0,0.0) #GPS has not orientation information.  Reflect an infinite covariance for orientation
         angleBody = AngleBody(0.0,0.0,0.0) #Currently no angle information is given
         positionBody = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
@@ -60,51 +58,51 @@ class CntrlPx4:
                 print(f"Drone discovered with UUID: {state.uuid}")
                 break
 
-        print('getting parameter')
-        aidMask = await self.drone.param.get_param_int('EKF2_AID_MASK')
-        print('aidMask = ', aidMask)
-        print('setting parameter')
+        # print('getting parameter')
+        # aidMask = await self.drone.param.get_param_int('EKF2_AID_MASK')
+        # print('aidMask = ', aidMask)
+        print('setting aid mask parameter')
         await self.drone.param.set_param_int('EKF2_AID_MASK',8)
-        print('getting parameter')
-        aidMask = await self.drone.param.get_param_int('EKF2_AID_MASK')
-        print('aidMask = ', aidMask)
+        # print('getting parameter')
+        # aidMask = await self.drone.param.get_param_int('EKF2_AID_MASK')
+        # print('aidMask = ', aidMask)
 
-        print('getting parameter')
-        height_mode = await self.drone.param.get_param_int('EKF2_HGT_MODE')
-        print('height_mode = ', height_mode)
-        print('setting parameter')
+        # print('getting parameter')
+        # height_mode = await self.drone.param.get_param_int('EKF2_HGT_MODE')
+        # print('height_mode = ', height_mode)
+        print('setting height mode parameter')
         await self.drone.param.set_param_int('EKF2_HGT_MODE',3)
-        print('getting parameter')
-        height_mode = await self.drone.param.get_param_int('EKF2_HGT_MODE')
-        print('height_mode = ', height_mode)
+        # print('getting parameter')
+        # height_mode = await self.drone.param.get_param_int('EKF2_HGT_MODE')
+        # print('height_mode = ', height_mode)
 
-        print('getting parameter')
-        ev_delay = await self.drone.param.get_param_float('EKF2_EV_DELAY')
-        print('ev_delay = ', ev_delay)
-        print('setting parameter')
+        # print('getting parameter')
+        # ev_delay = await self.drone.param.get_param_float('EKF2_EV_DELAY')
+        # print('ev_delay = ', ev_delay)
+        print('setting ev delay parameter')
         await self.drone.param.set_param_float('EKF2_EV_DELAY',175.0)
-        print('getting parameter')
-        ev_delay = await self.drone.param.get_param_float('EKF2_EV_DELAY')
-        print('ev_delay = ', ev_delay)
+        # print('getting parameter')
+        # ev_delay = await self.drone.param.get_param_float('EKF2_EV_DELAY')
+        # print('ev_delay = ', ev_delay)
 
-        print('getting parameters')
-        ev_pos_x = await self.drone.param.get_param_float('EKF2_EV_POS_X')
-        ev_pos_y = await self.drone.param.get_param_float('EKF2_EV_POS_Y')
-        ev_pos_z = await self.drone.param.get_param_float('EKF2_EV_POS_Z')
-        print('ev_pos_x = ', ev_pos_x)
-        print('ev_pos_y = ', ev_pos_y)
-        print('ev_pos_z = ', ev_pos_z)
-        print('setting parameters')
+        # print('getting parameters')
+        # ev_pos_x = await self.drone.param.get_param_float('EKF2_EV_POS_X')
+        # ev_pos_y = await self.drone.param.get_param_float('EKF2_EV_POS_Y')
+        # ev_pos_z = await self.drone.param.get_param_float('EKF2_EV_POS_Z')
+        # print('ev_pos_x = ', ev_pos_x)
+        # print('ev_pos_y = ', ev_pos_y)
+        # print('ev_pos_z = ', ev_pos_z)
+        print('setting ev pos parameters')
         await self.drone.param.set_param_float('EKF2_EV_POS_X',0.0)
         await self.drone.param.set_param_float('EKF2_EV_POS_Y',0.0)
         await self.drone.param.set_param_float('EKF2_EV_POS_Z',0.0)
-        print('getting parameters')
-        ev_pos_x = await self.drone.param.get_param_float('EKF2_EV_POS_X')
-        ev_pos_y = await self.drone.param.get_param_float('EKF2_EV_POS_Y')
-        ev_pos_z = await self.drone.param.get_param_float('EKF2_EV_POS_Z')
-        print('ev_pos_x = ', ev_pos_x)
-        print('ev_pos_y = ', ev_pos_y)
-        print('ev_pos_z = ', ev_pos_z)
+        # print('getting parameters')
+        # ev_pos_x = await self.drone.param.get_param_float('EKF2_EV_POS_X')
+        # ev_pos_y = await self.drone.param.get_param_float('EKF2_EV_POS_Y')
+        # ev_pos_z = await self.drone.param.get_param_float('EKF2_EV_POS_Z')
+        # print('ev_pos_x = ', ev_pos_x)
+        # print('ev_pos_y = ', ev_pos_y)
+        # print('ev_pos_z = ', ev_pos_z)
 
         print("Start updating position")
         asyncio.create_task(self.offboard_position_measurement_callback())
@@ -129,15 +127,13 @@ class CntrlPx4:
         # await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, -2.0, 0.0))
         # await asyncio.sleep(4)
 
-        # asyncio.create_task(self.publish_telemetry_odom)
+        asyncio.create_task(self.publish_telemetry_odom)
         # asyncio.create_task(self.offboard_velocity_command_callback())
 
     async def offboard_position_measurement_callback(self):
         while(1):
             if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
-                print('self.pose = ', self.pose)
                 await self.drone.mocap.set_vision_position_estimate(self.pose)
-                print('after set vision pos measurement')
                 self.prevPoseTime = self.pose.time_usec
 
     async def publish_telemetry_odom(self):
