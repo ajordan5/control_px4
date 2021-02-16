@@ -75,7 +75,7 @@ class Pose2Ublox_Ros():
 
         self.base_PosVelEcef.header.stamp = time_stamp
         self.base_PosVelEcef.fix = 3
-        # # self.base_PosVelEcef.lla = self.base_lla  #lla is not currently being used            
+        self.base_PosVelEcef.lla = self.p2u.base_virtual_lla  #lla is not currently being used            
         self.base_PosVelEcef.position = self.p2u.base_virtual_pos_ecef
         self.base_PosVelEcef.horizontal_accuracy = self.global_horizontal_accuracy
         self.base_PosVelEcef.vertical_accuracy = self.global_vertical_accuracy

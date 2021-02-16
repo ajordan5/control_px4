@@ -53,10 +53,7 @@ class Nav:
             self.lon_ref = msg.lla[1]
             self.alt_ref = msg.lla[2]
             self.refLlaSet = True
-        ecef = msg.position
-        print("ecef = ", ecef)
-        print("lla = ", self.lat_ref, ", ", self.lon_ref, ", ", self.alt_ref)
-        ned = navpy.ecef2ned(ecef,self.lat_ref,self.lon_ref,self.alt_ref)
+        ned = navpy.lla2ned(msg.lla[0],msg.lla[1],msg.lla[2],self.lat_ref,self.lon_ref,self.alt_ref)
         covariance = np.zeros(36)
         covariance[0] = msg.horizontal_accuracy
         covariance[6] = msg.horizontal_accuracy
@@ -68,6 +65,10 @@ class Nav:
         self.pose_update.pose.pose.position.x = ned[0]
         self.pose_update.pose.pose.position.y = ned[1]
         self.pose_update.pose.pose.position.z = ned[2]
+        self.pose_update.pose.pose.orientation.x = 0.0
+        self.pose_update.pose.pose.orientation.y = 0.0
+        self.pose_update.pose.pose.orientation.z = 0.0
+        self.pose_update.pose.pose.orientation.w = 1.0
         self.pose_update.pose.covariance = covariance
         self.pose_update_pub_.publish(self.pose_update)
 

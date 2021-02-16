@@ -76,10 +76,12 @@ class Pose2Ublox():
 
         #calculate virtual position in ecef frame with noise
         self.rover_ned_noise = self.add_gps_noise(self.white_noise_3d, self.rover_ned_noise, self.sigma_rover_pos)
-        rover_ned_w_noise = self.rover_ned + self.rover_ned_noise 
-        virtual_delta_ecef = navpy.ned2ecef(rover_ned_w_noise,self.ref_lla[0],self.ref_lla[1],self.ref_lla[2]) #self.ned2ecef(rover_ned_w_noise, self.ref_lla)
-        self.rover_virtual_pos_ecef = self.ref_ecef + virtual_delta_ecef
-        self.rover_virtual_lla = navpy.ecef2lla(self.rover_virtual_pos_ecef)
+        rover_ned_w_noise = self.rover_ned + self.rover_ned_noise
+        self.rover_virtual_lla = navpy.ned2lla(rover_ned_w_noise,self.ref_lla[0],self.ref_lla[1],self.ref_lla[2])
+        self.rover_virtual_pos_ecef = navpy.lla2ecef(self.rover_virtual_lla[0],self.rover_virtual_lla[1],self.rover_virtual_lla[2])
+        # virtual_delta_ecef = navpy.ned2ecef(rover_ned_w_noise,self.ref_lla[0],self.ref_lla[1],self.ref_lla[2]) #self.ned2ecef(rover_ned_w_noise, self.ref_lla)
+        # self.rover_virtual_pos_ecef = self.ref_ecef + virtual_delta_ecef
+        # self.rover_virtual_lla = navpy.ecef2lla(self.rover_virtual_pos_ecef)
 
         #calculate virtual velocity in ecef frame with noise
         #make sure we do not divide by zero
@@ -110,9 +112,11 @@ class Pose2Ublox():
         #calculate virtual position in ecef frame with noise
         self.base_ned_noise = self.add_gps_noise(self.white_noise_3d, self.base_ned_noise, self.sigma_base_pos)
         base_ned_w_noise = self.base_ned + self.base_ned_noise
-        virtual_delta_ecef = navpy.ned2ecef(base_ned_w_noise,self.ref_lla[0],self.ref_lla[1],self.ref_lla[2]) #self.ned2ecef(base_ned_w_noise, self.ref_lla)
-        self.base_virtual_pos_ecef = self.ref_ecef + virtual_delta_ecef
-
+        self.base_virtual_lla = navpy.ned2lla(base_ned_w_noise,self.ref_lla[0],self.ref_lla[1],self.ref_lla[2])
+        self.base_virtual_pos_ecef = navpy.lla2ecef(self.base_virtual_lla[0],self.base_virtual_lla[1],self.base_virtual_lla[2])
+        # virtual_delta_ecef = navpy.ned2ecef(base_ned_w_noise,self.ref_lla[0],self.ref_lla[1],self.ref_lla[2]) #self.ned2ecef(base_ned_w_noise, self.ref_lla)
+        # self.base_virtual_pos_ecef = self.ref_ecef + virtual_delta_ecef
+        
         #calculate virtual velocity in ecef frame with noise
         #make sure we do not divide by zero
         if dt != 0.0:
