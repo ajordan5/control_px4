@@ -9,7 +9,7 @@ import rospy
 import numpy as np
 
 from geometry_msgs.msg import Point
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped
 from std_msgs.msg import Bool
 
 class CntrlPx4:
@@ -19,20 +19,21 @@ class CntrlPx4:
 
         self.estimate_pub_ = rospy.Publisher('estimate',Point,queue_size=5,latch=True)
         self.vel_cmd_sub_ = rospy.Subscriber('velCmd', Point, self.velCmdCallback, queue_size=5)
-        self.positiion_measurement_sub_ = rospy.Subscriber('positionMeasurement', PoseStamped, self.positionMeasurementCallback, queue_size=5)
+        self.positiion_measurement_sub_ = rospy.Subscriber('odom_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
     
     def velCmdCallback(self,msg):
         self.velCmd = [msg.x,msg.y,msg.z]
         # self.update_control()
 
     def positionMeasurementCallback(self,msg):
-        time = np.array(msg.header.stamp.sec) + np.array(msg.header.stamp.nsec*1E-9)
-        # q = Quaternion(msg.pose.orientation.w,msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z)
-        # positionBody = PositionBody(msg.pose.position.x,msg.pose.position.y,msg.pose.position.z)
-        # #Todo: need to get the actual covariance matrix
-        # covarianceMatrix = ['Nan']
-        # poseCovariance = Covariance(covarianceMatrix)
-        # self.pose = AttitudePositionMocap(time,q,positionBody,poseCovariance)
+        time = np.array(msg.header.stamp.sec) + np.array(msg.header.stamp.nsec*1E-9) #check that this is what is needed
+        q = Quaternion(1.0,0.0,0.0,0.0) #GPS has not orientation information.  Reflect an infinite covariance for orientation
+        positionBody = PositionBody(msg.pose.position.x,msg.pose.position.y,msg.pose.position.z)
+        #Todo: need to get the actual covariance matrix
+        covarianceMatrix = ['Nan']
+        poseCovariance = Covariance(covarianceMatrix)
+        self.pose = AttitudePositionMocap(time,q,positionBody,poseCovariance)
+        self.update_position()
 
     def publish_estimate(self,position_body):
         self.estimate.x = position_body.x_m
@@ -70,6 +71,9 @@ class CntrlPx4:
 
         async for odom in self.drone.telemetry.odometry():
             self.publish_estimate(odom.position_body)
+
+    async def update_position(self):
+        await self.drone.offboard.set_attitude_position_mocap(self.pose)
 
 
     #     asyncio.create_task(self.run_time_task())

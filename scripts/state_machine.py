@@ -32,7 +32,7 @@ class StateMachine:
         self.hlcMsg = PoseStamped()
         self.beginLandingRoutineMsg = Bool()
 
-        self.relPos_sub_ = rospy.Subscriber('relPos', RelPos, self.relPosCallback, queue_size=5)
+        self.relPos_sub_ = rospy.Subscriber('relPos', Point, self.relPosCallback, queue_size=5)
         self.odom_sub_ = rospy.Subscriber('odom',Point,self.odomCallback, queue_size=5)
         self.hlc_pub_ = rospy.Publisher('hlc',PoseStamped,queue_size=5,latch=True)
         self.begin_landing_routine_pub_ = rospy.Publisher('begin_landing_routine',Bool,queue_size=5,latch=True)

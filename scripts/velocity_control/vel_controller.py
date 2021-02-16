@@ -11,7 +11,8 @@ from pid_class import PID
 
 class VelCntrl:
     def __init__(self):
-        self.error = [0.0,0.0,0.0]
+        self.odom = [0.0,0.0,0.0]
+        self.hlc = [0.0,0.0,0.0]
         self.baseVel = [0.0,0.0,0.0]
         self.prev_time = 0.0 #seconds
         self.beginLandingroutine = False
@@ -43,13 +44,21 @@ class VelCntrl:
         self.velCmd = Point()
 
         self.vel_cmd_pub_ = rospy.Publisher('vel_cmd',Point,queue_size=5,latch=True)
+        self.odom_sub_ = rospy.Subscriber('odom',Point,self.odomCallback,queue_size=5)
         self.hlc_sub_ = rospy.Subscriber('hlc', PoseStamped, self.hlcCallback, queue_size=5) 
-        self.boat_vel_sub_ = rospy.Subscriber('boat_vel', Point, self.boatVelCallback, queue_size=5)
+        self.boat_vel_sub_ = rospy.Subscriber('base_vel', Point, self.boatVelCallback, queue_size=5)
         self.begin_landing_routine_sub_ = rospy.Subscriber('begin_landing_routine', Bool, self.beginLandingroutineCallback, queue_size=5)
+
+        while not rospy.is_shutdown():
+            rospy.spin()
+
+    def odomCallback(self,msg):
+        self.odom = [msg.x,msg.y,msg.z]
+        #todo: I should probably do the updates through the odom callback rather than hlc.  Also I should grab time from here, since it would be coming from the px4.
 
     def hlcCallback(self,msg):
         self.hlc = [msg.pose.position.x,msg.pose.position.y,msg.pose.position.z]
-        self.time = np.array(msg.header.stamp.sec) + np.array(msg.header.stamp.nsec*1E-9)
+        self.time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9)
         self.update_control()
     
     def boatVelCallback(self,msg):
@@ -72,11 +81,11 @@ class VelCntrl:
 
     def get_commands(self):
         dt = self.time - self.prev_time
-        self.northPid.update_control(self.error[0],dt)
+        self.northPid.update_control(self.odom[0],self.hlc[0],dt)
         cmdX = self.northPid.command 
-        self.eastPid.update_control(self.error[1],dt)
+        self.eastPid.update_control(self.odom[1],self.hlc[1],dt)
         cmdY = self.eastPid.command
-        self.downPid.update_control(self.error[2],dt)
+        self.downPid.update_control(self.odom[2],self.hlc[2],dt)
         cmdZ = self.downPid.command
         cmd = [cmdX,cmdY,cmdZ]
         self.prev_time = self.time
@@ -89,7 +98,7 @@ class VelCntrl:
         return cmdVel
 
 if __name__ == "__main__":
-    rospy.init_node('vel_cmd', anonymous=True)
+    rospy.init_node('vel_controller', anonymous=True)
     try:
         vel_cntrl = VelCntrl()
     except:
