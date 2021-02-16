@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 
 <launch>
+    <arg name="bag_filename"    value="p2u"/>
+
     <node name="listener" pkg="listener" type="listener_node" output="screen"/>
     <group ns="p2u">
         <rosparam command="load" file="$(find control_px4)/params/px4_2ublox.yaml"/>
@@ -27,4 +29,6 @@
         <remap from="velCmd" to="/vel_cmd"/>
         <remap from="position_measurement" to="/pose_update"/>
     </node>
+
+    <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/boatLanding_sim/$(arg bag_filename).bag --all"/>
 </launch>

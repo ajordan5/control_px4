@@ -155,7 +155,9 @@ class CntrlPx4:
 
         # print("-- Go up 2 m/s")
         # await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, -2.0, 0.0))
-        # await asyncio.sleep(4)
+        # await asyncio.sleep(2)
+
+        # await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0,0.0,0.0,0.0))
 
         # asyncio.create_task(self.offboard_velocity_command_callback())
 
