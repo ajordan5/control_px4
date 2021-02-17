@@ -32,11 +32,10 @@ class StateMachine:
 
         self.hlcMsg = PoseStamped()
         self.beginLandingRoutineMsg = Bool()
-
-        self.relPos_sub_ = rospy.Subscriber('relPos', Point, self.relPosCallback, queue_size=5)
-        self.odom_sub_ = rospy.Subscriber('odom',Odometry,self.odomCallback, queue_size=5)
         self.hlc_pub_ = rospy.Publisher('hlc',PoseStamped,queue_size=5,latch=True)
         self.begin_landing_routine_pub_ = rospy.Publisher('begin_landing_routine',Bool,queue_size=5,latch=True)
+        self.relPos_sub_ = rospy.Subscriber('relPos', Point, self.relPosCallback, queue_size=5)
+        self.odom_sub_ = rospy.Subscriber('odom',Odometry,self.odomCallback, queue_size=5)
 
         while not rospy.is_shutdown():
             rospy.spin()
@@ -85,8 +84,8 @@ class StateMachine:
             print('land state')
 
     def land(self):
-        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,1.0]) + np.array(self.antennaOffset)
-        self.hlc = error + np.array(self.odom) #multirotor attemptes to drive itself into the platform 1 meter deep.
+        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,5.0]) + np.array(self.antennaOffset)
+        self.hlc = error + np.array(self.odom) #multirotor attemptes to drive itself into the platform 5 meters deep.
         self.publish_hlc()
 
     def publish_hlc(self):
