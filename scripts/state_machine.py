@@ -15,19 +15,22 @@ class StateMachine:
                               #1 - rendevous
                               #2 - descend
                               #3 - land
-        self.firstWaypoint = rospy.get_param('~firstWaypoint', [0.0,0.0,-2.0])
-        self.hlc = self.firstWaypoint
+        self.waypoints = rospy.get_param('~waypoints', [[0.0,0.0,-2.0]])
+        self.hlc = self.waypoints
         self.antennaOffset = rospy.get_param('~antennaOffset', [0.0,0.0,-0.5])
 
+        self.missionThreshold = rospy.get_param('~missionThreshold', 0.3)
         self.rendevousThreshold = rospy.get_param('~rendevousThreshold', 0.3)
-        self.descendThreshold = rospy.get_param('~descendThreshold', 0.3)
-        self.descendHeight = rospy.get_param('~descendHeight', -2.0)
+        self.rendevousHeight = rospy.get_param('~descendHeight', -2.0)
         self.landingThreshold = rospy.get_param('~landingThreshold', 0.1)
         self.landingHeight = rospy.get_param('~landingHeight', -0.15)
+        self.autoLand = rospy.get_param('~autoLand', False)
+        self.cyclicalPath = rospy.get_param('~cyclicalPath', False)
 
         self.roverNed = [0.0,0.0,0.0]
         self.boatNed = [0.0,0.0,0.0]
         self.rover2BaseRelPos = [0.0,0.0,0.0]
+        self.currentWaypointIndex = 0
 
         self.hlcMsg = PoseStamped()
         self.beginLandingRoutineMsg = Bool()
@@ -57,20 +60,29 @@ class StateMachine:
             self.fly_mission()
 
     def fly_mission(self):
-        self.hlc = self.firstWaypoint
+        currentWaypoint = self.waypoints[self.currentWaypointIndex]
+        self.hlc = currentWaypoint
         self.publish_hlc()
-        error = np.array(self.hlc)-np.array(self.odom)
-        if np.linalg.norm(error) < self.rendevousThreshold:
-            self.missionState = 1
-            print('rendevous state')
-            self.beginLandingRoutineMsg.data = True
-            self.begin_landing_routine_pub_.publish(self.beginLandingRoutineMsg)
-        
+        error = np.linalg.norm(np.array(self.hlc)-np.array(self.odom))
+        if error < self.missionThreshold:
+            print('reached waypoint ', self.currentWaypointIndex + 1)
+            self.currentWaypointIndex += 1
+            if self.currentWaypointIndex == len(self.waypoints) and self.autoLand == True:
+                self.missionState = 1
+                print('rendevous state')
+                self.beginLandingRoutineMsg.data = True
+                self.begin_landing_routine_pub_.publish(self.beginLandingRoutineMsg)
+                return
+            if self.cyclicalPath:
+                self.currentWaypointIndex %= len(self.waypoints)            
+            elif self.currentWaypointIndex == len(self.waypoints):
+                self.currentWaypointIndex -=1
+                
     def rendevous(self):
-        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.descendHeight]) + np.array(self.antennaOffset)
+        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + np.array(self.antennaOffset)
         self.hlc = error + np.array(self.odom)
         self.publish_hlc()
-        if np.linalg.norm(error) < self.descendThreshold:
+        if np.linalg.norm(error) < self.rendevousThreshold:
             self.missionState = 2
             print('descend state')
 
