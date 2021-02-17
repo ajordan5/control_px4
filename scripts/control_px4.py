@@ -23,17 +23,16 @@ class CntrlPx4:
         self.startMission = False
 
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
+        self.start_controller_pub_ = rospy.Publisher('start_controller',Bool,queue_size=5,latch=True)
         self.vel_cmd_sub_ = rospy.Subscriber('velCmd', Point, self.velCmdCallback, queue_size=5)
         self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
     
     def velCmdCallback(self,msg):
         self.velCmd = [msg.x,msg.y,msg.z]
-        # self.update_control()
 
     def positionMeasurementCallback(self,msg):
-        time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this probably needs to be adjusted for the px4 time.
+        time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
         time = int(round(time,6)*1E6)
-        # # q = Quaternion(1.0,0.0,0.0,0.0) #GPS has not orientation information.  Reflect an infinite covariance for orientation
         angleBody = AngleBody(0.0,0.0,0.0) #Currently no angle information is given
         positionBody = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
         covarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.pose.covariance)
@@ -86,6 +85,11 @@ class CntrlPx4:
         rosCov[35] = px4Cov[20]
         return rosCov
 
+    def start_controller(self):
+        start_flag = Bool()
+        start_flag.data = True
+        self.start_controller_pub_.publish(start_flag)
+
     async def run(self):
         """ Does Offboard control using velocity NED coordinates. """
 
@@ -103,48 +107,19 @@ class CntrlPx4:
         print('aidMask = ', aidMask)
         print('setting aid mask parameter')
         await self.drone.param.set_param_int('EKF2_AID_MASK',8)
-        # await self.drone.param.set_param_int('EKF2_AID_MASK',1)
         print('getting parameter')
         aidMask = await self.drone.param.get_param_int('EKF2_AID_MASK')
         print('aidMask = ', aidMask)
 
-        # print('getting parameter')
-        # height_mode = await self.drone.param.get_param_int('EKF2_HGT_MODE')
-        # print('height_mode = ', height_mode)
         print('setting height mode parameter')
-        # await self.drone.param.set_param_int('EKF2_HGT_MODE',0) #barometer is primary altitude sensor
         await self.drone.param.set_param_int('EKF2_HGT_MODE',3) #extern meas is primary altitude sensor
-        # print('getting parameter')
-        # height_mode = await self.drone.param.get_param_int('EKF2_HGT_MODE')
-        # print('height_mode = ', height_mode)
-
-        # print('getting parameter')
-        # ev_delay = await self.drone.param.get_param_float('EKF2_EV_DELAY')
-        # print('ev_delay = ', ev_delay)
         print('setting ev delay parameter')
         await self.drone.param.set_param_float('EKF2_EV_DELAY',175.0)
-        # print('getting parameter')
-        # ev_delay = await self.drone.param.get_param_float('EKF2_EV_DELAY')
-        # print('ev_delay = ', ev_delay)
-
-        # print('getting parameters')
-        # ev_pos_x = await self.drone.param.get_param_float('EKF2_EV_POS_X')
-        # ev_pos_y = await self.drone.param.get_param_float('EKF2_EV_POS_Y')
-        # ev_pos_z = await self.drone.param.get_param_float('EKF2_EV_POS_Z')
-        # print('ev_pos_x = ', ev_pos_x)
-        # print('ev_pos_y = ', ev_pos_y)
-        # print('ev_pos_z = ', ev_pos_z)
         print('setting ev pos parameters')
         await self.drone.param.set_param_float('EKF2_EV_POS_X',0.0)
         await self.drone.param.set_param_float('EKF2_EV_POS_Y',0.0)
         await self.drone.param.set_param_float('EKF2_EV_POS_Z',0.0)
-        # print('getting parameters')
-        # ev_pos_x = await self.drone.param.get_param_float('EKF2_EV_POS_X')
-        # ev_pos_y = await self.drone.param.get_param_float('EKF2_EV_POS_Y')
-        # ev_pos_z = await self.drone.param.get_param_float('EKF2_EV_POS_Z')
-        # print('ev_pos_x = ', ev_pos_x)
-        # print('ev_pos_y = ', ev_pos_y)
-        # print('ev_pos_z = ', ev_pos_z)
+        print('External update params are set.  If changes were made to these params, a reboot is necessary.')
 
         print("Start updating position")
         await asyncio.sleep(5)
@@ -167,15 +142,9 @@ class CntrlPx4:
             await self.drone.action.disarm()
             return
 
-        # print("-- Go up 2 m/s")
-        # await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, -2.0, 0.0))
-        # await asyncio.sleep(5)
-
-        # await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0,0.0,0.0,0.0))
-
         print('Start Mission')
+        self.start_controller()     
         self.startMission = True
-        # asyncio.create_task(self.offboard_velocity_command_callback())
 
     async def input_meas_output_est(self):
         async for odom in self.drone.telemetry.odometry():
@@ -186,24 +155,6 @@ class CntrlPx4:
             if self.velCmd != self.prevVelCmd and self.startMission:
                 await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
                 self.prevVelCmd = self.velCmd
-
-    async def offboard_velocity_command_callback(self):
-        while(1):
-            if self.velCmd != self.prevVelCmd:
-                await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
-                self.prevVelCmd = self.velCmd
-
-    # async def update_position(self):
-    #     await self.drone.offboard.set_attitude_position_mocap(self.pose)
-
-
-    #     asyncio.create_task(self.run_time_task())
-
-    # async def update_control(self):
-    #     await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.cmdVel[0],self.cmdVel[1],self.cmdVel[2], 0.0))
-
-    # async def run_time_task(self):
-    #     await get estimate
 
 if __name__ == "__main__":
     rospy.init_node('control_px4', anonymous=True)

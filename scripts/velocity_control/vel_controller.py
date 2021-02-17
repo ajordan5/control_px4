@@ -18,33 +18,37 @@ class VelCntrl:
         self.prev_time = 0.0 #seconds
         self.beginLandingroutine = False
 
-        kpN = 1.0
-        kiN = 0.0
-        kdN = 0.2
+        kpN = 2.5
+        kiN = 0.0 #0.05
+        kdN = 1.0
         tauN = 0.05
-        maxNDot = 8.0
-        self.northPid = PID(kpN,kiN,kdN,tauN,maxNDot)
+        maxNDot = 5.0
+        conditionalIntegratorThreshold = 1000.0 #high conditional integrator effectively keeps the integrator on
+        self.northPid = PID(kpN,kiN,kdN,tauN,maxNDot,conditionalIntegratorThreshold)
         self.kffN = 1.0+kdN
 
-        kpE = 1.0
-        kiE = 0.0
-        kdE = 0.2
+        kpE = 2.5
+        kiE = 0.0 #0.05
+        kdE = 1.0
         tauE = 0.05
-        maxEDot = 8.0
-        self.eastPid = PID(kpE,kiE,kdE,tauE,maxEDot)
+        maxEDot = 5.0
+        conditionalIntegratorThreshold = 1000.0
+        self.eastPid = PID(kpE,kiE,kdE,tauE,maxEDot,conditionalIntegratorThreshold)
         self.kffE = 1.0+kdE
 
-        kpD = 1.0
-        kiD = 0.0
-        kdD = 0.2
+        kpD = 2.5
+        kiD = 0.0 #0.05
+        kdD = 1.0
         tauD = 0.05
-        maxDDot = 8.0
-        self.downPid = PID(kpD,kiD,kdD,tauD,maxDDot)
+        maxDDot = 5.0
+        conditionalIntegratorThreshold = 1000.0
+        self.downPid = PID(kpD,kiD,kdD,tauD,maxDDot,conditionalIntegratorThreshold)
         self.kffD = 1.0+kdD
 
         self.velCmd = Point()
 
         self.vel_cmd_pub_ = rospy.Publisher('vel_cmd',Point,queue_size=5,latch=True)
+        self.start_controller_sub = rospy.Subscriber('start_controller',Bool,self.startControllerCallback,queue_size=5)
         self.odom_sub_ = rospy.Subscriber('odom',Odometry,self.odomCallback,queue_size=5)
         self.hlc_sub_ = rospy.Subscriber('hlc', PoseStamped, self.hlcCallback, queue_size=5) 
         self.boat_vel_sub_ = rospy.Subscriber('base_vel', Point, self.boatVelCallback, queue_size=5)
@@ -52,6 +56,10 @@ class VelCntrl:
 
         while not rospy.is_shutdown():
             rospy.spin()
+
+    def startControllerCallback(self,msg):
+        if msg.data == True:
+            self.reset_integrators()
 
     def odomCallback(self,msg):
         self.odom = [msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z]
@@ -96,6 +104,11 @@ class VelCntrl:
         cmdVel[1] = cmdVel[1] + self.kffE*self.baseVel[1]
         cmdVel[2] = cmdVel[2] + self.kffD*self.baseVel[2]
         return cmdVel
+
+    def reset_integrators(self):
+        self.northPid.integrator = 0.0
+        self.eastPid.integrator = 0.0
+        self.downPid.integrator = 0.0
 
 if __name__ == "__main__":
     rospy.init_node('vel_controller', anonymous=True)

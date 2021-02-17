@@ -1,16 +1,18 @@
 class PID:
-    def __init__(self,kp,ki,kd,tau,maxDot):
+    def __init__(self,kp,ki,kd,tau,maxDot,conditionalIntegratorThreshold):
         self.kp = kp
         self.ki = ki
         self.kd = kd
 
         self.tau = tau
         self.maxDot = maxDot
+        self.conditionalIntegratorThreshold = conditionalIntegratorThreshold
 
         self.integrator = 0.0
         self.derivative = 0.0
 
         self.prev_state = 0.0
+        self.prev_error = 0.0
         self.command = 0.0
 
     def update_control(self,state,desired,dt):
@@ -25,7 +27,12 @@ class PID:
         self.prev_state = state
 
     def update_integrator(self,error,dt):
-        self.integrator = self.integrator+error*dt
+        eDot = (error - self.prev_error)/dt
+        if error > 0.0 and eDot > -self.conditionalIntegratorThreshold:
+            self.integrator = self.integrator+error*dt
+        elif error < 0.0 and eDot < self.conditionalIntegratorThreshold:
+            self.integrator = self.integrator+error*dt
+        self.prev_error = error
 
     def update_derivative(self,state,dt):
         dState = state - self.prev_state
