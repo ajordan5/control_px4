@@ -1,5 +1,5 @@
 state_machine: {
-  firstWaypoint: [2.0,0.0,-2.0],
+  firstWaypoint: [0.0,0.0,-2.0],
   antennaOffset: [0.0,0.0,-0.5],
   rendevousThreshold: 0.3,
   descendThreshold: 0.3,

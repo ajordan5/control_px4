@@ -102,25 +102,6 @@ class CntrlPx4:
                 print(f"Drone discovered with UUID: {state.uuid}")
                 break
 
-        print('getting parameter')
-        aidMask = await self.drone.param.get_param_int('EKF2_AID_MASK')
-        print('aidMask = ', aidMask)
-        print('setting aid mask parameter')
-        await self.drone.param.set_param_int('EKF2_AID_MASK',8)
-        print('getting parameter')
-        aidMask = await self.drone.param.get_param_int('EKF2_AID_MASK')
-        print('aidMask = ', aidMask)
-
-        print('setting height mode parameter')
-        await self.drone.param.set_param_int('EKF2_HGT_MODE',3) #extern meas is primary altitude sensor
-        print('setting ev delay parameter')
-        await self.drone.param.set_param_float('EKF2_EV_DELAY',175.0)
-        print('setting ev pos parameters')
-        await self.drone.param.set_param_float('EKF2_EV_POS_X',0.0)
-        await self.drone.param.set_param_float('EKF2_EV_POS_Y',0.0)
-        await self.drone.param.set_param_float('EKF2_EV_POS_Z',0.0)
-        print('External update params are set.  If changes were made to these params, a reboot is necessary.')
-
         print("Start updating position")
         await asyncio.sleep(5)
         asyncio.create_task(self.input_meas_output_est())
