@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+
+<launch>
+    <node name="state_machine" pkg="control_px4" type="state_machine.py" output="screen">
+        <remap from="relPos" to="/relPos_stripped"/>
+        <remap from="odom" to="/estimate"/>
+    </node>
+    <node name="velocity_controller" pkg="control_px4" type="vel_controller.py" output="screen">
+        <remap from="odom" to="/estimate"/>
+        <remap from="hlc" to="/hlc"/>
+        <remap from="base_vel" to="base_velocity"/>
+        <remap from="begin_landing_routine" to="/begin_landing_routine"/>
+    </node>
+    <node name="control_px4" pkg="control_px4" type="control_px4.py" output="screen">
+        <remap from="velCmd" to="/vel_cmd"/>
+        <remap from="position_measurement" to="/pose_update"/>
+    </node>
+</launch>
