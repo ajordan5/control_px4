@@ -15,16 +15,15 @@ class StateMachine:
                               #1 - rendevous
                               #2 - descend
                               #3 - land
-
-        self.firstWaypoint = [0.0,0.0,-2.0]
+        self.firstWaypoint = rospy.get_param('~firstWaypoint', [0.0,0.0,-2.0])
         self.hlc = self.firstWaypoint
-        self.antennaOffset = [0.0,0.0,-0.5]
+        self.antennaOffset = rospy.get_param('~antennaOffset', [0.0,0.0,-0.5])
 
-        self.rendevousThreshold = 0.3
-        self.descendThreshold = 0.3
-        self.descendHeight = -2.0
-        self.landingThreshold = 0.1
-        self.landingHeight = -0.15
+        self.rendevousThreshold = rospy.get_param('~rendevousThreshold', 0.3)
+        self.descendThreshold = rospy.get_param('~descendThreshold', 0.3)
+        self.descendHeight = rospy.get_param('~descendHeight', -2.0)
+        self.landingThreshold = rospy.get_param('~landingThreshold', 0.1)
+        self.landingHeight = rospy.get_param('~landingHeight', -0.15)
 
         self.roverNed = [0.0,0.0,0.0]
         self.boatNed = [0.0,0.0,0.0]

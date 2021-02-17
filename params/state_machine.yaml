@@ -1,0 +1,9 @@
+state_machine: {
+  firstWaypoint: [2.0,0.0,-2.0],
+  antennaOffset: [0.0,0.0,-0.5],
+  rendevousThreshold: 0.3,
+  descendThreshold: 0.3,
+  descendHeight: -2.0,
+  landingThreshold: 0.1,
+  landingHeight: -0.15,
+}

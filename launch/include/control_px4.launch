@@ -1,10 +1,12 @@
 <?xml version="1.0"?>
 
 <launch>
+    <rosparam command="load" file="$(find control_px4)/params/state_machine.yaml"/>
     <node name="state_machine" pkg="control_px4" type="state_machine.py" output="screen">
         <remap from="relPos" to="/relPos_stripped"/>
         <remap from="odom" to="/estimate"/>
     </node>
+    <rosparam command="load" file="$(find control_px4)/params/controller.yaml"/>
     <node name="velocity_controller" pkg="control_px4" type="vel_controller.py" output="screen">
         <remap from="odom" to="/estimate"/>
         <remap from="hlc" to="/hlc"/>

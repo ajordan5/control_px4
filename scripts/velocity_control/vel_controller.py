@@ -18,31 +18,31 @@ class VelCntrl:
         self.prev_time = 0.0 #seconds
         self.beginLandingroutine = False
 
-        kpN = 2.5
-        kiN = 0.0 #0.05
-        kdN = 1.0
-        tauN = 0.05
-        maxNDot = 5.0
-        conditionalIntegratorThreshold = 1000.0 #high conditional integrator effectively keeps the integrator on
-        self.northPid = PID(kpN,kiN,kdN,tauN,maxNDot,conditionalIntegratorThreshold)
+        kpN = rospy.get_param('~kpN', 2.5)
+        kiN = rospy.get_param('~kiN', 0.0)
+        kdN = rospy.get_param('~kdN', 1.0)
+        tauN = rospy.get_param('~tauN', 0.05)
+        maxNDot = rospy.get_param('~maxNDot', 5.0)
+        conditionalIntegratorThresholdN = rospy.get_param('~conditionalIntegratorThresholdN', 1000.0)
+        self.northPid = PID(kpN,kiN,kdN,tauN,maxNDot,conditionalIntegratorThresholdN)
         self.kffN = 1.0+kdN
 
-        kpE = 2.5
-        kiE = 0.0 #0.05
-        kdE = 1.0
-        tauE = 0.05
-        maxEDot = 5.0
-        conditionalIntegratorThreshold = 1000.0
-        self.eastPid = PID(kpE,kiE,kdE,tauE,maxEDot,conditionalIntegratorThreshold)
+        kpE = rospy.get_param('~kpE', 2.5)
+        kiE = rospy.get_param('~kiE', 0.0)
+        kdE = rospy.get_param('~kdE', 1.0)
+        tauE = rospy.get_param('~tauE', 0.05)
+        maxEDot = rospy.get_param('~maxEDot', 5.0)
+        conditionalIntegratorThresholdE = rospy.get_param('~conditionalIntegratorThresholdE', 1000.0)
+        self.eastPid = PID(kpE,kiE,kdE,tauE,maxEDot,conditionalIntegratorThresholdE)
         self.kffE = 1.0+kdE
 
-        kpD = 2.5
-        kiD = 0.0 #0.05
-        kdD = 1.0
-        tauD = 0.05
-        maxDDot = 5.0
-        conditionalIntegratorThreshold = 1000.0
-        self.downPid = PID(kpD,kiD,kdD,tauD,maxDDot,conditionalIntegratorThreshold)
+        kpD = rospy.get_param('~kpD', 2.5)
+        kiD = rospy.get_param('~kiD', 0.0)
+        kdD = rospy.get_param('~kdD', 1.0)
+        tauD = rospy.get_param('~tauD', 0.05)
+        maxDDot = rospy.get_param('~maxDDot', 5.0)
+        conditionalIntegratorThresholdD = rospy.get_param('~conditionalIntegratorThresholdD', 1000.0)
+        self.downPid = PID(kpD,kiD,kdD,tauD,maxDDot,conditionalIntegratorThresholdD)
         self.kffD = 1.0+kdD
 
         self.velCmd = Point()
