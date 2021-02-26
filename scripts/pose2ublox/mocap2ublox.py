@@ -10,7 +10,7 @@ class Mocap2Ublox(Pose2Ublox_Ros):
         self.receivedRoverPose = False
         self.receivedBasePose = False
         # Subscribers
-        self.rover_mocap_ned_sub_ = rospy.Subscriber('rover_pose', PoseStamped, self.roverNedCallback, queue_size=5)
+        self.rover_mocap_ned_sub_ = rospy.Subscriber('rover_mocap', PoseStamped, self.roverNedCallback, queue_size=5)
         self.base_mocap_ned_sub_ = rospy.Subscriber('base_mocap', PoseStamped, self.baseNedCallback, queue_size=5)
 
         while not rospy.is_shutdown():

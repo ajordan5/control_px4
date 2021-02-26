@@ -11,7 +11,7 @@ relative_vertical_accuracy: 0.06,
 relative_speed_accuracy: 0.02,
 heading_accuracy: 0.01,
 
-noise_on: False,
+noise_on: True,
 
 ref_lla: [40.267320, -111.635629, 1387.0],
 
