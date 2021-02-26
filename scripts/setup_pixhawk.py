@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 import asyncio
+
 from mavsdk import System
 
-async def run():
-    """ Does Offboard control using velocity NED coordinates. """
 
+async def run():
     drone = System()
     await drone.connect(system_address="serial:///dev/ttyACM0")
 
