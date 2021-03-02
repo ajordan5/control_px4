@@ -81,10 +81,11 @@ class ManualPx4:
         """ Does Offboard control using velocity NED coordinates. """
 
         self.drone = System()
-        await self.drone.connect(system_address="udp://:14540")
+        await self.drone.connect(system_address="serial:///dev/ttyACM1")
 
         print("Waiting for drone to connect...")
         async for state in self.drone.core.connection_state():
+            print('in for loop')
             if state.is_connected:
                 print(f"Drone discovered with UUID: {state.uuid}")
                 break

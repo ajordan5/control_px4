@@ -3,9 +3,7 @@
 <launch>
     <arg name="bag_filename"    value="manual_m2u"/>
 
-    <!-- Be sure to switch listener back to optitrack!!!!!!!!!!!!!11-->
-    <!-- <node name="node" pkg="optitrack_vrpn" type="node" output="screen"/> -->
-    <node name="listener" pkg="listener" type="listener_node" output="screen"/>
+    <!--node name="node" pkg="optitrack_vrpn" type="node" output="screen"/-->
     <group ns="m2u">
         <rosparam command="load" file="$(find control_px4)/params/mocap2ublox.yaml"/>
         <node name="mocap2ublox" pkg="control_px4" type="mocap2ublox.py" output="screen">
@@ -21,5 +19,5 @@
     <node name="control_px4" pkg="control_px4" type="manual_px4.py" output="screen">
         <remap from="position_measurement" to="/pose_update"/>
     </node>
-    <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/boatLanding_sim/$(arg bag_filename).bag --all"/>
+    <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/mocap/$(arg bag_filename).bag --all"/>
 </launch>

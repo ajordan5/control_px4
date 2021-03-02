@@ -29,8 +29,9 @@ class Pose2Ublox_Ros():
         self.ublox_rate_timer_ = rospy.Timer(rospy.Duration(self.Ts), self.ubloxRateCallback)
     
     def ubloxRateCallback(self, event):
-        if not self.receivedPose:
-            return
+        # may need to replace this if the boat is working again.
+        #if not self.receivedPose:
+        #    return
             
         #publishes all the messages together like ublox would
         #TODO use event to get time

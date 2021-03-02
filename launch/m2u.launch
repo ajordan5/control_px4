@@ -7,8 +7,8 @@
     <group ns="m2u">
         <rosparam command="load" file="$(find control_px4)/params/mocap2ublox.yaml"/>
         <node name="mocap2ublox" pkg="control_px4" type="mocap2ublox.py" output="screen">
-            <!-- <remap from="/rover_pose" to="/rover_pose"/>
-            <remap from="/base_pose" to="/base_pose"/> -->
+            <remap from="rover_mocap" to="/rhodey_ned"/>
+            <!--remap from="base_mocap" to="/base_pose"/> -->
         </node>
     </group>
     <node name="nav" pkg="control_px4" type="nav.py" output="screen">
@@ -17,5 +17,5 @@
         <remap from="base_posVelEcef" to="/m2u/boat/PosVelEcef"/>
     </node>
     <include file="$(find control_px4)/launch/include/control_px4.launch"/>
-    <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/boatLanding_sim/$(arg bag_filename).bag --all"/>
+    <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/mocap/$(arg bag_filename).bag --all"/>
 </launch>

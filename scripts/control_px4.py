@@ -21,6 +21,7 @@ class CntrlPx4:
         self.estimateMsg = Odometry()
         self.meas1_received = False
         self.startMission = False
+        self.flightMode = 'none'
 
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
         self.start_controller_pub_ = rospy.Publisher('start_controller',Bool,queue_size=5,latch=True)
@@ -94,9 +95,10 @@ class CntrlPx4:
         """ Does Offboard control using velocity NED coordinates. """
 
         self.drone = System()
-        await self.drone.connect(system_address="udp://:14540")
+        await self.drone.connect(system_address="serial:///dev/ttyUSB0:921600")
 
         print("Waiting for drone to connect...")
+        await asyncio.sleep(5)
         async for state in self.drone.core.connection_state():
             if state.is_connected:
                 print(f"Drone discovered with UUID: {state.uuid}")
@@ -107,25 +109,13 @@ class CntrlPx4:
         asyncio.create_task(self.input_meas_output_est())
         await asyncio.sleep(10)
 
-        print("-- Arming")
-        await self.drone.action.arm()
-
-        print("-- Setting initial setpoint")
-        await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
-
-        print("-- Starting offboard")
-        try:
-            await self.drone.offboard.start()
-        except OffboardError as error:
-            print(f"Starting offboard mode failed with error code: \
-                {error._result.result}")
-            print("-- Disarming")
-            await self.drone.action.disarm()
-            return
-
-        print('Start Mission')
-        self.start_controller()     
-        self.startMission = True
+        async for flight_mode in self.drone.telemetry.flight_mode():
+            if self.flightMode != flight_mode:
+                print("FlightMode:", flight_mode)
+                self.flightMode = flight_mode
+                if not self.startMission:
+                    self.start_controller()
+                    self.startMission = True
 
     async def input_meas_output_est(self):
         async for odom in self.drone.telemetry.odometry():
@@ -141,8 +131,9 @@ if __name__ == "__main__":
     rospy.init_node('control_px4', anonymous=True)
     try:
         cntrl_px4 = CntrlPx4()
-        asyncio.ensure_future(cntrl_px4.run())
+        #asyncio.ensure_future(cntrl_px4.run())
         loop = asyncio.get_event_loop()
+        loop.run_until_complete(cntrl_px4.run())
         loop.run_forever()
     except:
         rospy.ROSInterruptException
