@@ -56,7 +56,21 @@ async def run():
     print('EKF2_EV_POS_X = ', posX)
     print('EKF2_EV_POS_Y = ', posY)
     print('EKF2_EV_POS_Z = ', posZ)
-    print('External update params are set.  If changes were made to these params, a reboot is necessary.')
+    print('External update params are set.')
+
+    print('setting declination')
+    auto_declination = await drone.param.get_param_int('ATT_MAG_DECL_A')
+    print('auto_declination = ', auto_declination)
+    await drone.param.set_param_int('ATT_MAG_DECL_A',1)#0)
+    auto_declination = await drone.param.get_param_int('ATT_MAG_DECL_A')
+    print('auto_declination = ', auto_declination)
+    declination = await drone.param.get_param_float('ATT_MAG_DECL')
+    print('declination = ', declination)
+    await drone.param.set_param_float('ATT_MAG_DECL',0.0)#10.936)
+    declination = await drone.param.get_param_float('ATT_MAG_DECL')
+    print('declination = ', declination)
+
+    print('If changes were made to these params, a reboot is necessary.')
 
 
 if __name__ == "__main__":
