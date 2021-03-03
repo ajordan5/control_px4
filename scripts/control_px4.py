@@ -105,6 +105,8 @@ class CntrlPx4:
                 break
 
         print("Start updating position")
+        #100 hz seems to be the max odom rate.
+        await self.drone.telemetry.set_rate_odometry(100)
         await asyncio.sleep(5)
         asyncio.create_task(self.input_meas_output_est())
         await asyncio.sleep(10)
