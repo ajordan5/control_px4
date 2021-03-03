@@ -15,6 +15,7 @@
         <remap from="rover_relPos" to="/m2u/RelPos"/>
         <remap from="posVelEcef" to="/m2u/PosVelEcef"/>
         <remap from="base_posVelEcef" to="/m2u/boat/PosVelEcef"/>
+        <remap from="rover_pose_4_heading" to="rhodey_ned"/>
     </node>
     <include file="$(find control_px4)/launch/include/control_px4.launch"/>
     <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/mocap/$(arg bag_filename).bag --all"/>
