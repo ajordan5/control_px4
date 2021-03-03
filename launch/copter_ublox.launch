@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+
+<launch>
+    <arg name="bag_filename"    value="copter_ublox"/>
+    <arg name="rover_serial_port"   value="/dev/ttyACM0"/>
+    <arg name="base_host"           value="192.168.0.143"/>
+    <arg name="rover_host"          value="192.168.0.84"/> 
+    <arg name="posVelEcef"          value="/rover/PosVelEcef"/>
+    <arg name="rover_relPos"        value="/boat/RelPos"/>
+    <arg name="base_posVelEcef"     value="/boat/odom"/>
+
+    <include file="$(find ublox)/launch/rover.launch">
+        <arg name="rover_serial_port" value="$(arg rover_serial_port)"/>
+        <arg name="base_host"         value="$(arg base_host)"/>
+        <arg name="rover_host"        value="$(arg rover_host)"/>
+    </include>
+
+    <node name="nav" pkg="control_px4" type="nav.py" output="screen">
+        <remap from="rover_relPos" to="$(arg rover_relPos)"/>
+        <remap from="posVelEcef" to="$(arg posVelEcef)"/>
+        <remap from="base_posVelEcef" to="$(arg base_posVelEcef)"/>
+    </node>
+    <include file="$(find control_px4)/launch/include/control_px4.launch"/>
+    <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/mocap/$(arg bag_filename).bag --all"/>
+</launch>
