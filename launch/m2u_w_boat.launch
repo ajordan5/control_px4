@@ -1,18 +1,20 @@
 <?xml version="1.0"?>
 
 <launch>
-    <arg name="bag_filename"    value="m2u"/>
+    <arg name="bag_filename"    value="m2u_w_boat"/>
 
     <node name="node" pkg="optitrack_vrpn" type="node" output="screen"/>
     <group ns="m2u">
         <rosparam command="load" file="$(find control_px4)/params/mocap2ublox.yaml"/>
         <node name="mocap2ublox" pkg="control_px4" type="mocap2ublox.py" output="screen">
             <remap from="rover_mocap" to="/rhodey_ned"/>
+            <remap from="base_mocap" to="/boat_landing_platform_ned"/> -->
         </node>
     </group>
     <node name="nav" pkg="control_px4" type="nav.py" output="screen">
         <remap from="rover_relPos" to="/m2u/RelPos"/>
         <remap from="posVelEcef" to="/m2u/PosVelEcef"/>
+        <remap from="base_posVelEcef" to="/m2u/boat/PosVelEcef"/>
 	    <remap from="rover_pose_4_heading" to="/rhodey_ned"/>
     </node>
     <include file="$(find control_px4)/launch/include/control_px4.launch"/>
