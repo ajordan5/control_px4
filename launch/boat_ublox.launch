@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <arg name="base_serial_port"    value="/dev/ttyACM0"/>
+  <arg name="base_host"           value="192.168.0.143"/>
+  <arg name="base_port"           value="16140"/>
+  <arg name="compass_serial_port" value="/dev/ttyACM1"/>
+  <arg name="compass_host"        value="$(arg base_host)"/>
+  <arg name="compass_port"        value="16145"/>
+  <arg name="rover_host"          value="192.168.0.57"/>
+  <arg name="rover_port"           value="16140"/>
+  <arg name="ublox_gnss"          value="/boat/PosVelEcef"/>
+  <arg name="ublox_relpos"        value="/boat/compass/RelPos"/>
+
+  <group ns="boat">
+    <node name="f9p" pkg="ublox" type="ublox_ros">
+      <param name="serial_port" value="$(arg base_serial_port)"/>
+      <param name="local_host" value="$(arg base_host)"/>
+      <param name="local_port" value="16140"/>
+      <param name="rover_host" value="$(arg rover_host)"/>
+      <param name="rover_port" value="16140"/>
+      <param name="local_host2" value="$(arg base_host)"/>
+      <param name="local_port2" value="16145"/>
+      <param name="rover_host2" value="$(arg base_host)"/>
+      <param name="rover_port2" value="16150"/>
+      <rosparam command="load" file="$(find ublox)/params/ublox.yaml"/>
+      <param name="rover_quantity" value="2"/>
+      <param name="base_type" value="moving"/>
+    </node>
+
+    <group ns="compass">
+      <node name="f9p" pkg="ublox" type="ublox_ros">
+        <param name="serial_port" value="$(arg compass_serial_port)"/>
+        <param name="local_host" value="$(arg base_host)"/>
+        <param name="local_port" value="16150"/>
+        <param name="base_host" value="$(arg base_host)"/>
+        <param name="base_port" value="16145"/>
+        <rosparam command="load" file="$(find ublox)/params/ublox.yaml"/>
+        <param name="rover_quantity" value="0"/>
+        <param name="base_type" value="moving"/>
+        <param name="message_rate" value="5"/>
+      </node>
+    </group>
+  </group>
+</launch>
