@@ -14,7 +14,7 @@ from ublox.msg import PosVelEcef
 class Nav:
     def __init__(self):
         self.baseVelocity = Point()
-        self.relPos = Point()
+        self.rover2Base_relPos = Point()
         self.pose_update = PoseWithCovarianceStamped()
 
         self.roll_covariance = 1000000 #essentially infinite
@@ -28,11 +28,11 @@ class Nav:
         #this node can be used to extrapolate relpos messages given rover estimate updates.
         #or we could potentially use base estimation for the extrapolation as well.
         # self.rover_extrapolated_relPos_pub_ = rospy.Publisher('extrap_relPos', RelPos, queue_size=5, latch=True)
-        self.rover_relPos_stripped_pub_ = rospy.Publisher('relPos_stripped', Point, queue_size=5, latch=True)
+        self.rover2Base_relPos_stripped_pub_ = rospy.Publisher('rover2Base_relPos_stripped', Point, queue_size=5, latch=True)
         self.base_velocity_pub_ = rospy.Publisher('base_velocity', Point, queue_size=5, latch=True)
         self.pose_update_pub_ = rospy.Publisher('pose_update', PoseWithCovarianceStamped, queue_size=5, latch=True)
         self.base_heading_pub_ = rospy.Publisher('base_heading', Vector3, queue_size=5, latch=True)
-        self.rover_relPos_sub_ = rospy.Subscriber('rover_relPos', RelPos, self.roverRelPosCallback, queue_size=5)
+        self.base2rover_relPos_sub_ = rospy.Subscriber('base2Rover_relPos', RelPos, self.base2RoverRelPosCallback, queue_size=5)
         self.posVelEcef_sub_ = rospy.Subscriber('posVelEcef', PosVelEcef, self.posVelEcefCallback, queue_size=5)
         self.base_posVelEcef_sub_ = rospy.Subscriber('base_posVelEcef', PosVelEcef, self.basePosVelEcefCallback, queue_size=5)
         self.compass_relPos_sub_ = rospy.Subscriber('compass_relPos', RelPos, self.compassRelPosCallback, queue_size=5)
@@ -42,11 +42,11 @@ class Nav:
             # wait for new messages and call the callback when they arrive
             rospy.spin()
 
-    def roverRelPosCallback(self, msg):
-        self.relPos.x = np.array(msg.relPosNED[0])+np.array(msg.relPosHPNED[0])
-        self.relPos.y = np.array(msg.relPosNED[1])+np.array(msg.relPosHPNED[1])
-        self.relPos.z = np.array(msg.relPosNED[2])+np.array(msg.relPosHPNED[2])
-        self.rover_relPos_stripped_pub_.publish(self.relPos)
+    def base2RoverRelPosCallback(self, msg):
+        self.rover2Base_relPos.x = -np.array(msg.relPosNED[0])-np.array(msg.relPosHPNED[0])
+        self.rover2Base_relPos.y = -np.array(msg.relPosNED[1])-np.array(msg.relPosHPNED[1])
+        self.rover2Base_relPos.z = -np.array(msg.relPosNED[2])-np.array(msg.relPosHPNED[2])
+        self.rover2Base_relPos_stripped_pub_.publish(self.rover2Base_relPos)
         # self.rover_extrapolated_relPos_pub_.publish(msg)
 
     def compassRelPosCallback(self, msg):

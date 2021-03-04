@@ -3,7 +3,7 @@
 <launch>
     <rosparam command="load" file="$(find control_px4)/params/state_machine.yaml"/>
     <node name="state_machine" pkg="control_px4" type="state_machine.py" output="screen">
-        <remap from="relPos" to="/relPos_stripped"/>
+        <remap from="rover2BaseRelPos" to="/rover2Base_relPos_stripped"/>
         <remap from="odom" to="/estimate"/>
         <remap from="base_heading" to="/base_heading"/>
     </node>

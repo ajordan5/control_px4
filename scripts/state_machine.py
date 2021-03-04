@@ -39,22 +39,22 @@ class StateMachine:
         self.beginLandingRoutineMsg = Bool()
         self.hlc_pub_ = rospy.Publisher('hlc',PoseStamped,queue_size=5,latch=True)
         self.begin_landing_routine_pub_ = rospy.Publisher('begin_landing_routine',Bool,queue_size=5,latch=True)
-        self.relPos_sub_ = rospy.Subscriber('relPos', Point, self.relPosCallback, queue_size=5)
+        self.rover2BaseRelPos_sub_ = rospy.Subscriber('rover2BaseRelPos', Point, self.rover2BaseRelPosCallback, queue_size=5)
         self.odom_sub_ = rospy.Subscriber('odom',Odometry,self.odomCallback, queue_size=5)
         self.base_heading_sub = rospy.Subscriber('base_heading',Vector3,self.baseHeadingCallback, queue_size=5)
 
         while not rospy.is_shutdown():
             rospy.spin()
 
-    def relPosCallback(self,msg):
-        self.rover2BaseRelPos = [-msg.x,-msg.y,-msg.z]
+    def rover2BaseRelPosCallback(self,msg):
+        self.rover2BaseRelPos = [msg.x,msg.y,msg.z]
 
     def odomCallback(self,msg):
         self.odom = [msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z]
         self.update_hlc()
 
     def baseHeadingCallback(self,msg):
-        self.RBase = R.from_rotvec(np.pi/180.0*np.array([0.0,0.0,msg.z])) #could add other orientations if needed.
+        self.RBase = R.from_rotvec(np.array([0.0,0.0,msg.z])) #could add other orientations if needed.
 
     def update_hlc(self):
         if self.missionState == 1:

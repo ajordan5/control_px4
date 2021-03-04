@@ -5,7 +5,7 @@
     <arg name="rover_mocap"         value="/rhodey_ned"/>
     <arg name="base_mocap"          value="/boat_landing_platform_ned"/>
     <arg name="posVelEcef"          value="/m2u/rover/PosVelEcef"/>
-    <arg name="boat2rover_relPos"   value="/m2u/boat/RelPos"/>
+    <arg name="base2Rover_relPos"   value="/m2u/boat/RelPos"/>
     <arg name="base_posVelEcef"     value="/m2u/boat/PosVelEcef"/>
     <arg name="compass_relPos"      value="/m2u/boat/compass/RelPos"/>
 
@@ -18,7 +18,7 @@
         </node>
     </group>
     <node name="nav" pkg="control_px4" type="nav.py" output="screen">
-        <remap from="boat2rover_relPos" to="$(arg boat2rover_relPos)"/>
+        <remap from="base2Rover_relPos" to="$(arg base2Rover_relPos)"/>
         <remap from="posVelEcef" to="$(arg posVelEcef)"/>
         <remap from="base_posVelEcef" to="$(arg base_posVelEcef)"/>
         <remap from="compass_relPos" to="$(arg compass_relPos)"/>
