@@ -2,6 +2,7 @@
 
 <launch>
     <arg name="bag_filename"    value="p2u"/>
+    <arg name="compass_relPos"      value="p2u/boat/compass/RelPos"/>
 
     <node name="listener" pkg="listener" type="listener_node" output="screen"/>
     <group ns="p2u">
@@ -15,6 +16,7 @@
         <remap from="rover_relPos" to="/p2u/RelPos"/>
         <remap from="posVelEcef" to="/p2u/PosVelEcef"/>
         <remap from="base_posVelEcef" to="/p2u/boat/PosVelEcef"/>
+        <remap from="compass_relPos" to="$(arg compass_relPos)"/>
     </node>
     <include file="$(find control_px4)/launch/include/control_px4.launch"/>
     <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/boatLanding_sim/$(arg bag_filename).bag --all"/>

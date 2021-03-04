@@ -22,7 +22,7 @@ class Nav:
         self.yaw_covariance = 1000000 
         self.mocap_covariance = 0.6 #high to simulate outdoors.  Not sure what this value should really be though.
         self.orientation = [0.0,0.0,0.0,1.0]
-        self.base_orientation = Vector3
+        self.base_orientation = Vector3()
         self.refLlaSet = False
         #TODO we may need to speed up command inputs in order to have good performance.
         #this node can be used to extrapolate relpos messages given rover estimate updates.
@@ -50,7 +50,7 @@ class Nav:
         # self.rover_extrapolated_relPos_pub_.publish(msg)
 
     def compassRelPosCallback(self, msg):
-        self.base_orientation.z = msg.heading
+        self.base_orientation.z = msg.relPosHeading
         self.base_heading_pub_.publish(self.base_orientation)
     
     def basePosVelEcefCallback(self,msg):

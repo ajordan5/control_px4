@@ -57,7 +57,6 @@ class StateMachine:
         self.RBase = R.from_rotvec(np.pi/180.0*np.array([0.0,0.0,msg.z])) #could add other orientations if needed.
 
     def update_hlc(self):
-        self.rotatedAntennaOffset = 
         if self.missionState == 1:
             self.rendevous()
         elif self.missionState == 2:
