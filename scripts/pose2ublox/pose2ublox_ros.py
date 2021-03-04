@@ -20,8 +20,8 @@ class Pose2Ublox_Ros():
             self.sigma_base_vel, self.lpf_on, self.A, self.B)
 
         # Publishers
-        self.rover_virtual_relpos_pub_ = rospy.Publisher('RelPos', RelPos, queue_size=5, latch=True)
-        self.rover_virtual_PosVelEcef_pub_ = rospy.Publisher('PosVelEcef', PosVelEcef, queue_size=5, latch=True)
+        self.rover_virtual_relpos_pub_ = rospy.Publisher('/boat/RelPos', RelPos, queue_size=5, latch=True)
+        self.rover_virtual_PosVelEcef_pub_ = rospy.Publisher('/rover/PosVelEcef', PosVelEcef, queue_size=5, latch=True)
         self.compass_virtual_relPos_pub_ = rospy.Publisher('boat/compass/RelPos', RelPos, queue_size=5, latch=True)
         self.base_virtual_PosVelEcef_pub_ = rospy.Publisher('boat/PosVelEcef', PosVelEcef, queue_size=5, latch=True)
         

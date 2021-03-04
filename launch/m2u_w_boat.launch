@@ -1,21 +1,28 @@
 <?xml version="1.0"?>
 
 <launch>
-    <arg name="bag_filename"    value="m2u_w_boat"/>
+    <arg name="bag_filename"        value="m2u_w_boat"/>
+    <arg name="rover_mocap"         value="/rhodey_ned"/>
+    <arg name="base_mocap"          value="/boat_landing_platform_ned"/>
+    <arg name="posVelEcef"          value="/m2u/rover/PosVelEcef"/>
+    <arg name="boat2rover_relPos"   value="/m2u/boat/RelPos"/>
+    <arg name="base_posVelEcef"     value="/m2u/boat/PosVelEcef"/>
+    <arg name="compass_relPos"      value="/m2u/boat/compass/RelPos"/>
 
     <node name="node" pkg="optitrack_vrpn" type="node" output="screen"/>
     <group ns="m2u">
         <rosparam command="load" file="$(find control_px4)/params/mocap2ublox.yaml"/>
         <node name="mocap2ublox" pkg="control_px4" type="mocap2ublox.py" output="screen">
-            <remap from="rover_mocap" to="/rhodey_ned"/>
-            <remap from="base_mocap" to="/boat_landing_platform_ned"/> -->
+            <remap from="rover_mocap" to="$(arg rover_mocap)"/>
+            <remap from="base_mocap" to="$(arg base_mocap)"/>
         </node>
     </group>
     <node name="nav" pkg="control_px4" type="nav.py" output="screen">
-        <remap from="rover_relPos" to="/m2u/RelPos"/>
-        <remap from="posVelEcef" to="/m2u/PosVelEcef"/>
-        <remap from="base_posVelEcef" to="/m2u/boat/PosVelEcef"/>
-	    <remap from="rover_pose_4_heading" to="/rhodey_ned"/>
+        <remap from="boat2rover_relPos" to="$(arg boat2rover_relPos)"/>
+        <remap from="posVelEcef" to="$(arg posVelEcef)"/>
+        <remap from="base_posVelEcef" to="$(arg base_posVelEcef)"/>
+        <remap from="compass_relPos" to="$(arg compass_relPos)"/>
+	    <remap from="rover_pose_4_heading" to="$(arg rover_mocap)"/>
     </node>
     <include file="$(find control_px4)/launch/include/control_px4.launch"/>
     <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/mocap/$(arg bag_filename).bag --all"/>

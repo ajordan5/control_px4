@@ -5,6 +5,7 @@
     <node name="state_machine" pkg="control_px4" type="state_machine.py" output="screen">
         <remap from="relPos" to="/relPos_stripped"/>
         <remap from="odom" to="/estimate"/>
+        <remap from="base_heading" to="/base_heading"/>
     </node>
     <rosparam command="load" file="$(find control_px4)/params/controller.yaml"/>
     <node name="velocity_controller" pkg="control_px4" type="vel_controller.py" output="screen">
