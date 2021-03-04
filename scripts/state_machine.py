@@ -17,7 +17,7 @@ class StateMachine:
                               #3 - land
         self.waypoints = rospy.get_param('~waypoints', [[0.0,0.0,-2.0]])
         self.hlc = self.waypoints
-        self.antennaOffset = rospy.get_param('~antennaOffset', [0.0,0.0,-0.5])
+        self.antennaOffset = rospy.get_param('~antennaOffset', [0.0,0.0,0.0])
 
         self.missionThreshold = rospy.get_param('~missionThreshold', 0.3)
         self.rendevousThreshold = rospy.get_param('~rendevousThreshold', 0.3)

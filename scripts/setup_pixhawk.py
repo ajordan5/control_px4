@@ -7,7 +7,7 @@ from mavsdk import System
 
 async def run():
     drone = System()
-    await drone.connect(system_address="serial:///dev/ttyACM0")
+    await drone.connect(system_address="serial:///dev/ttyUSB0:921600")
 
     print("Waiting for drone to connect...")
     async for state in drone.core.connection_state():
@@ -19,7 +19,7 @@ async def run():
     aidMask = await drone.param.get_param_int('EKF2_AID_MASK')
     print('EKF2_AID_MASK = ', aidMask)
     print('setting aid mask parameter')
-    await drone.param.set_param_int('EKF2_AID_MASK',8)
+    await drone.param.set_param_int('EKF2_AID_MASK',24)
     aidMask = await drone.param.get_param_int('EKF2_AID_MASK')
     print('EKF2_AID_MASK = ', aidMask)
 

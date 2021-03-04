@@ -6,6 +6,7 @@ import numpy as np
 import math
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseStamped
 from ublox.msg import RelPos
 from ublox.msg import PosVelEcef
 
@@ -18,12 +19,9 @@ class Nav:
         self.roll_covariance = 1000000 #essentially infinite
         self.pitch_covariance = 1000000
         self.yaw_covariance = 1000000 
-        self.mocap_covariance = 0.0001
-        self.pose_update.header = msg.header
-        self.orientation[0] = [0.0,0.0,0.0,1.0]
-
+        self.mocap_covariance = 0.6 #high to simulate outdoors.  Not sure what this value should really be though.
+        self.orientation = [0.0,0.0,0.0,1.0]
         self.refLlaSet = False
-
         #TODO we may need to speed up command inputs in order to have good performance.
         #this node can be used to extrapolate relpos messages given rover estimate updates.
         #or we could potentially use base estimation for the extrapolation as well.
@@ -31,13 +29,11 @@ class Nav:
         self.rover_relPos_stripped_pub_ = rospy.Publisher('relPos_stripped', Point, queue_size=5, latch=True)
         self.base_velocity_pub_ = rospy.Publisher('base_velocity', Point, queue_size=5, latch=True)
         self.pose_update_pub_ = rospy.Publisher('pose_update', PoseWithCovarianceStamped, queue_size=5, latch=True)
-
         self.rover_relPos_sub_ = rospy.Subscriber('rover_relPos', RelPos, self.roverRelPosCallback, queue_size=5)
         self.posVelEcef_sub_ = rospy.Subscriber('posVelEcef', PosVelEcef, self.posVelEcefCallback, queue_size=5)
         self.base_posVelEcef_sub_ = rospy.Subscriber('base_posVelEcef', PosVelEcef, self.basePosVelEcefCallback, queue_size=5)
         self.rover_pose_4_heading_sub_ = rospy.Subscriber('rover_pose_4_heading', PoseStamped, self.roverPose4HeadingCallback, queue_size=5)
         # self.px4_estimate_sub_ = rospy.Subscriber('/px4_estimate', PoseStamped, self.px4EstimateCallback, queue_size=5)
-
         while not rospy.is_shutdown():
             # wait for new messages and call the callback when they arrive
             rospy.spin()
