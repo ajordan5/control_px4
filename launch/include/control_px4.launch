@@ -15,6 +15,7 @@
 	<remap from="begin_landing_routine" to="/begin_landing_routine"/>
 	<remap from="switch_integrators" to="/switch_integrators"/>
     </node>
+    <rosparam command="load" file="$(find control_px4)/params/control_px4.yaml"/>
     <node name="control_px4" pkg="control_px4" type="control_px4.py" output="screen">
         <remap from="velCmd" to="/vel_cmd"/>
         <remap from="position_measurement" to="/pose_update"/>

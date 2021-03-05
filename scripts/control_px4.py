@@ -2,7 +2,7 @@
 
 import asyncio
 from mavsdk import System
-from mavsdk.offboard import (OffboardError, VelocityNedYaw)
+from mavsdk.offboard import (PositionNedYaw,OffboardError, VelocityNedYaw)
 from mavsdk.mocap import (AttitudePositionMocap,VisionPositionEstimate,Quaternion,PositionBody,AngleBody,Covariance)
 import navpy
 import rospy
@@ -22,6 +22,8 @@ class CntrlPx4:
         self.meas1_received = False
         self.startMission = False
         self.flightMode = 'none'
+        self.sim = rospy.get_param('~sim', False)
+        self.systemAddress = rospy.get_param('~systemAddress', "serial:///dev/ttyUSB0:921600")
 
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
         self.switch_integrators_pub_ = rospy.Publisher('switch_integrators',Bool,queue_size=5,latch=True)
@@ -96,7 +98,7 @@ class CntrlPx4:
         """ Does Offboard control using velocity NED coordinates. """
 
         self.drone = System()
-        await self.drone.connect(system_address="serial:///dev/ttyUSB0:921600")
+        await self.drone.connect(system_address=self.systemAddress)
 
         print("Waiting for drone to connect...")
         await asyncio.sleep(5)
@@ -107,10 +109,17 @@ class CntrlPx4:
 
         print("Start updating position")
         #100 hz seems to be the max odom rate.
-        await self.drone.telemetry.set_rate_odometry(100)
-        await asyncio.sleep(5)
-        asyncio.create_task(self.input_meas_output_est())
-        await asyncio.sleep(10)
+        #await self.drone.telemetry.set_rate_odometry(100)
+        #await asyncio.sleep(5)
+        #asyncio.create_task(self.input_meas_output_est())
+        #await asyncio.sleep(10)
+
+        if self.sim == True:
+            print('in if statement')
+            await self.drone.action.arm()
+            await self.drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, 0.0, 0.0))
+            await self.drone.offboard.start()
+            print("Simulation starting offboard.")
 
         async for flight_mode in self.drone.telemetry.flight_mode():
             if self.flightMode != flight_mode:

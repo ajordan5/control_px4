@@ -1,0 +1,4 @@
+control_px4: {
+  sim: True,
+  systemAddress: "udp://:14540", #"serial:///dev/ttyUSB0:921600",
+}
