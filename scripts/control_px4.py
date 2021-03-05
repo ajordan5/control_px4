@@ -4,6 +4,7 @@ import asyncio
 from mavsdk import System
 from mavsdk.offboard import (OffboardError, VelocityNedYaw)
 from mavsdk.mocap import (AttitudePositionMocap,VisionPositionEstimate,Quaternion,PositionBody,AngleBody,Covariance)
+from mavsdk.telemetry import FlightMode
 import navpy
 import rospy
 import numpy as np
@@ -20,6 +21,7 @@ class CntrlPx4:
         self.estimateMsg = Odometry()
         self.meas1_received = False
         self.flightMode = 'none'
+        self.offBoardOn = False
         self.sim = rospy.get_param('~sim', False)
         self.systemAddress = rospy.get_param('~systemAddress', "serial:///dev/ttyUSB0:921600")
 
@@ -118,14 +120,19 @@ class CntrlPx4:
             print("Simulation starting offboard.")
 
         async for flight_mode in self.drone.telemetry.flight_mode():
+            if await self.drone.offboard.is_active():
+                print('is active')
+            else:
+                print('not active')
             if self.flightMode != flight_mode:
                 print("FlightMode:", flight_mode)
                 self.flightMode = flight_mode
-                if await self.drone.offboard.is_active():
-                    await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
+                if flight_mode == FlightMode(7):
                     self.switch_integrators(True)
+                    self.offBoardOn = True
                 else:
                     self.switch_integrators(False)
+                    self.offBoardOn = True
 
     async def input_meas_output_est(self):
         async for odom in self.drone.telemetry.odometry():
@@ -133,7 +140,7 @@ class CntrlPx4:
             if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await self.drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
-            if await self.drone.offboard.is_active():
+            if self.offBoardOn:
                 await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
 
 if __name__ == "__main__":
