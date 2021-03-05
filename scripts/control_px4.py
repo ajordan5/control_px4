@@ -120,10 +120,6 @@ class CntrlPx4:
             print("Simulation starting offboard.")
 
         async for flight_mode in self.drone.telemetry.flight_mode():
-            if await self.drone.offboard.is_active():
-                print('is active')
-            else:
-                print('not active')
             if self.flightMode != flight_mode:
                 print("FlightMode:", flight_mode)
                 self.flightMode = flight_mode
@@ -132,7 +128,7 @@ class CntrlPx4:
                     self.offBoardOn = True
                 else:
                     self.switch_integrators(False)
-                    self.offBoardOn = True
+                    self.offBoardOn = False
 
     async def input_meas_output_est(self):
         async for odom in self.drone.telemetry.odometry():
@@ -140,8 +136,7 @@ class CntrlPx4:
             if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await self.drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
-            if self.offBoardOn:
-                await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
+            await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
 
 if __name__ == "__main__":
     rospy.init_node('control_px4', anonymous=True)
