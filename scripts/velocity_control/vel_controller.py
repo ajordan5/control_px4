@@ -61,14 +61,8 @@ class VelCntrl:
             rospy.spin()
 
     def switchIntegratorsCallback(self,msg):
-        print('in callback')
-        if msg.data == True:
-            if self.integrators_on == True:
-                self.integrators_on = False
-                self.reset_integrators()
-            else:
-                self.reset_integrators()
-                self.integrators_on = True
+        self.reset_integrators()
+        self.integrators_on = msg.data
 
     def odomCallback(self,msg):
         self.odom = [msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z]
@@ -107,8 +101,7 @@ class VelCntrl:
         cmd = [cmdX,cmdY,cmdZ]
         self.prev_time = self.time
 
-        #print('down integrator = ', self.downPid.integrator)
-
+        # print('down integrator = ', self.downPid.integrator) #Use to make sure there is no integrator wind up.
         return cmd
 
     def add_feed_forward(self,cmdVel):

@@ -88,10 +88,9 @@ class CntrlPx4:
         rosCov[35] = px4Cov[20]
         return rosCov
 
-    def switch_integrators(self):
-        print('in publisher')
+    def switch_integrators(self,onOffFlag):
         flag = Bool()
-        flag.data = True
+        flag.data = onOffFlag
         self.switch_integrators_pub_.publish(flag)
 
     async def run(self):
@@ -110,27 +109,27 @@ class CntrlPx4:
         print("Start updating position")
         # 100 hz seems to be the max odom rate.
         await self.drone.telemetry.set_rate_odometry(100)
-        await asyncio.sleep(5)
+        await asyncio.sleep(2)
         asyncio.create_task(self.input_meas_output_est())
-        await asyncio.sleep(10)
+        await asyncio.sleep(5)
 
         if self.sim == True:
-            print('in if statement')
             self.startMission = True
             await self.drone.action.arm()
             await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
             await self.drone.offboard.start()
             print("Simulation starting offboard.")
 
-        # async for flight_mode in self.drone.telemetry.flight_mode():
-        #     if self.flightMode != flight_mode:
-        #         print("FlightMode:", flight_mode,"hello")
-        #         self.flightMode = flight_mode
-        #         # if flight_mode in ['MANUAL']:
-        #         #     print("in if statement")
-        #         #     self.switch_integrators()
-        #         if not self.startMission: 
-        #             self.startMission = True
+        async for flight_mode in self.drone.telemetry.flight_mode():
+            if self.flightMode != flight_mode:
+                print("FlightMode:", flight_mode)
+                self.flightMode = flight_mode
+                if await self.drone.offboard.is_active():
+                    self.switch_integrators(True)
+                else:
+                    self.switch_integrators(False)
+                if not self.startMission: 
+                    self.startMission = True
 
     async def input_meas_output_est(self):
         async for odom in self.drone.telemetry.odometry():
