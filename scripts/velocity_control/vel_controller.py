@@ -49,9 +49,7 @@ class VelCntrl:
         self.velCmd = Point()
 
         self.vel_cmd_pub_ = rospy.Publisher('vel_cmd',Point,queue_size=5,latch=True)
-        print('before subscriber')
         self.switch_integrators_sub_ = rospy.Subscriber('switch_integrators',Bool,self.switchIntegratorsCallback,queue_size=5)
-        print('after subscriber')
         self.odom_sub_ = rospy.Subscriber('odom',Odometry,self.odomCallback,queue_size=5)
         self.hlc_sub_ = rospy.Subscriber('hlc', PoseStamped, self.hlcCallback, queue_size=5) 
         self.boat_vel_sub_ = rospy.Subscriber('base_vel', Point, self.boatVelCallback, queue_size=5)

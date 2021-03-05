@@ -16,11 +16,9 @@ from std_msgs.msg import Bool
 class CntrlPx4:
     def __init__(self):
         self.velCmd = [0.0,0.0,0.0]
-        self.prevVelCmd = [0.0,0.0,0.0]
         self.prevPoseTime = 0.0
         self.estimateMsg = Odometry()
         self.meas1_received = False
-        self.startMission = False
         self.flightMode = 'none'
         self.sim = rospy.get_param('~sim', False)
         self.systemAddress = rospy.get_param('~systemAddress', "serial:///dev/ttyUSB0:921600")
@@ -114,7 +112,6 @@ class CntrlPx4:
         await asyncio.sleep(5)
 
         if self.sim == True:
-            self.startMission = True
             await self.drone.action.arm()
             await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
             await self.drone.offboard.start()
@@ -125,11 +122,10 @@ class CntrlPx4:
                 print("FlightMode:", flight_mode)
                 self.flightMode = flight_mode
                 if await self.drone.offboard.is_active():
+                    await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
                     self.switch_integrators(True)
                 else:
                     self.switch_integrators(False)
-                if not self.startMission: 
-                    self.startMission = True
 
     async def input_meas_output_est(self):
         async for odom in self.drone.telemetry.odometry():
@@ -137,9 +133,8 @@ class CntrlPx4:
             if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await self.drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
-            if self.velCmd != self.prevVelCmd and self.startMission:
+            if await self.drone.offbaord.is_active():
                 await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
-                self.prevVelCmd = self.velCmd
 
 if __name__ == "__main__":
     rospy.init_node('control_px4', anonymous=True)
