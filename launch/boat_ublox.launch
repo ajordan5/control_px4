@@ -12,6 +12,7 @@
   <arg name="rover_port"           value="16140"/>
   <arg name="ublox_gnss"          value="/boat/PosVelEcef"/>
   <arg name="ublox_relpos"        value="/boat/compass/RelPos"/>
+  <arg name="base_odom"           value="/boat/odom"/>
 
   <group ns="boat">
     <node name="f9p" pkg="ublox" type="ublox_ros">
@@ -44,3 +45,4 @@
     </group>
   </group>
 </launch>
+
