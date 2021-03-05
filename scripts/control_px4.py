@@ -133,7 +133,7 @@ class CntrlPx4:
             if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await self.drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
-            if await self.drone.offbaord.is_active():
+            if await self.drone.offboard.is_active():
                 await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
 
 if __name__ == "__main__":
