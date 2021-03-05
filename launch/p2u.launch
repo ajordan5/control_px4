@@ -13,8 +13,8 @@
         </node>
     </group>
     <node name="nav" pkg="control_px4" type="nav.py" output="screen">
-        <remap from="rover_relPos" to="/p2u/RelPos"/>
-        <remap from="posVelEcef" to="/p2u/PosVelEcef"/>
+        <remap from="base2Rover_relPos" to="/p2u/boat/RelPos"/>
+        <remap from="posVelEcef" to="/p2u/rover/PosVelEcef"/>
         <remap from="base_posVelEcef" to="/p2u/boat/PosVelEcef"/>
         <remap from="compass_relPos" to="$(arg compass_relPos)"/>
     </node>

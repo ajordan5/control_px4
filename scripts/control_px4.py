@@ -122,15 +122,15 @@ class CntrlPx4:
             await self.drone.offboard.start()
             print("Simulation starting offboard.")
 
-        async for flight_mode in self.drone.telemetry.flight_mode():
-            if self.flightMode != flight_mode:
-                print("FlightMode:", flight_mode,"hello")
-                self.flightMode = flight_mode
-                # if flight_mode in ['MANUAL']:
-                #     print("in if statement")
-                #     self.switch_integrators()
-                if not self.startMission: 
-                    self.startMission = True
+        # async for flight_mode in self.drone.telemetry.flight_mode():
+        #     if self.flightMode != flight_mode:
+        #         print("FlightMode:", flight_mode,"hello")
+        #         self.flightMode = flight_mode
+        #         # if flight_mode in ['MANUAL']:
+        #         #     print("in if statement")
+        #         #     self.switch_integrators()
+        #         if not self.startMission: 
+        #             self.startMission = True
 
     async def input_meas_output_est(self):
         async for odom in self.drone.telemetry.odometry():
