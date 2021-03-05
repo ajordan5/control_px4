@@ -17,6 +17,7 @@ class VelCntrl:
         self.baseVel = [0.0,0.0,0.0]
         self.prev_time = 0.0 #seconds
         self.beginLandingroutine = False
+        self.integrators_on = False
 
         kpN = rospy.get_param('~kpN', 2.5)
         kiN = rospy.get_param('~kiN', 0.0)
@@ -48,7 +49,9 @@ class VelCntrl:
         self.velCmd = Point()
 
         self.vel_cmd_pub_ = rospy.Publisher('vel_cmd',Point,queue_size=5,latch=True)
-        self.start_controller_sub = rospy.Subscriber('start_controller',Bool,self.startControllerCallback,queue_size=5)
+        print('before subscriber')
+        self.switch_integrators_sub_ = rospy.Subscriber('switch_integrators',Bool,self.switchIntegratorsCallback,queue_size=5)
+        print('after subscriber')
         self.odom_sub_ = rospy.Subscriber('odom',Odometry,self.odomCallback,queue_size=5)
         self.hlc_sub_ = rospy.Subscriber('hlc', PoseStamped, self.hlcCallback, queue_size=5) 
         self.boat_vel_sub_ = rospy.Subscriber('base_vel', Point, self.boatVelCallback, queue_size=5)
@@ -57,9 +60,15 @@ class VelCntrl:
         while not rospy.is_shutdown():
             rospy.spin()
 
-    def startControllerCallback(self,msg):
+    def switchIntegratorsCallback(self,msg):
+        print('in callback')
         if msg.data == True:
-            self.reset_integrators()
+            if self.integrators_on == True:
+                self.integrators_on = False
+                self.reset_integrators()
+            else:
+                self.reset_integrators()
+                self.integrators_on = True
 
     def odomCallback(self,msg):
         self.odom = [msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z]
@@ -89,14 +98,17 @@ class VelCntrl:
 
     def get_commands(self):
         dt = self.time - self.prev_time
-        self.northPid.update_control(self.odom[0],self.hlc[0],dt)
+        self.northPid.update_control(self.odom[0],self.hlc[0],dt,self.integrators_on)
         cmdX = self.northPid.command 
-        self.eastPid.update_control(self.odom[1],self.hlc[1],dt)
+        self.eastPid.update_control(self.odom[1],self.hlc[1],dt,self.integrators_on)
         cmdY = self.eastPid.command
-        self.downPid.update_control(self.odom[2],self.hlc[2],dt)
+        self.downPid.update_control(self.odom[2],self.hlc[2],dt,self.integrators_on)
         cmdZ = self.downPid.command
         cmd = [cmdX,cmdY,cmdZ]
         self.prev_time = self.time
+
+        #print('down integrator = ', self.downPid.integrator)
+
         return cmd
 
     def add_feed_forward(self,cmdVel):

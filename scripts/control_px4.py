@@ -24,7 +24,7 @@ class CntrlPx4:
         self.flightMode = 'none'
 
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
-        self.start_controller_pub_ = rospy.Publisher('start_controller',Bool,queue_size=5,latch=True)
+        self.switch_integrators_pub_ = rospy.Publisher('switch_integrators',Bool,queue_size=5,latch=True)
         self.vel_cmd_sub_ = rospy.Subscriber('velCmd', Point, self.velCmdCallback, queue_size=5)
         self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
     
@@ -86,10 +86,11 @@ class CntrlPx4:
         rosCov[35] = px4Cov[20]
         return rosCov
 
-    def start_controller(self):
-        start_flag = Bool()
-        start_flag.data = True
-        self.start_controller_pub_.publish(start_flag)
+    def switch_integrators(self):
+        print('in publisher')
+        flag = Bool()
+        flag.data = True
+        self.switch_integrators_pub_.publish(flag)
 
     async def run(self):
         """ Does Offboard control using velocity NED coordinates. """
@@ -113,10 +114,12 @@ class CntrlPx4:
 
         async for flight_mode in self.drone.telemetry.flight_mode():
             if self.flightMode != flight_mode:
-                print("FlightMode:", flight_mode)
+                print("FlightMode:", flight_mode,"hello")
                 self.flightMode = flight_mode
-                if not self.startMission:
-                    self.start_controller()
+                if flight_mode in ['MANUAL']:
+                    print("in if statement")
+                    self.switch_integrators()
+                if not self.startMission: 
                     self.startMission = True
 
     async def input_meas_output_est(self):

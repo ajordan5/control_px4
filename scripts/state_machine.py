@@ -57,9 +57,9 @@ class StateMachine:
         self.RBase = R.from_rotvec(np.array([0.0,0.0,msg.z])) #could add other orientations if needed.
 
     def update_hlc(self):
-        if self.missionState == 1:
+        if self.missionState == 1 or self.missionState == 2:
             self.rendevous()
-        elif self.missionState == 2:
+        elif self.missionState == 5:
             self.descend()
         elif self.missionState == 3:
             self.land()

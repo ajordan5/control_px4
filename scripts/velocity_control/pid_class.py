@@ -15,11 +15,11 @@ class PID:
         self.prev_error = 0.0
         self.command = 0.0
 
-    def update_control(self,state,desired,dt):
+    def update_control(self,state,desired,dt,integrators_on):
         if dt < 0.0001:
             return
         error = desired-state
-        if self.ki != 0.0:
+        if self.ki != 0.0 and integrators_on == True:
             self.update_integrator(error,dt)
         if self.kd != 0.0:
             self.update_derivative(state,dt)
