@@ -2,7 +2,7 @@
 
 import asyncio
 from mavsdk import System
-from mavsdk.offboard import (PositionNedYaw,OffboardError, VelocityNedYaw)
+from mavsdk.offboard import (OffboardError, VelocityNedYaw)
 from mavsdk.mocap import (AttitudePositionMocap,VisionPositionEstimate,Quaternion,PositionBody,AngleBody,Covariance)
 import navpy
 import rospy
@@ -108,16 +108,17 @@ class CntrlPx4:
                 break
 
         print("Start updating position")
-        #100 hz seems to be the max odom rate.
-        #await self.drone.telemetry.set_rate_odometry(100)
-        #await asyncio.sleep(5)
-        #asyncio.create_task(self.input_meas_output_est())
-        #await asyncio.sleep(10)
+        # 100 hz seems to be the max odom rate.
+        await self.drone.telemetry.set_rate_odometry(100)
+        await asyncio.sleep(5)
+        asyncio.create_task(self.input_meas_output_est())
+        await asyncio.sleep(10)
 
         if self.sim == True:
             print('in if statement')
+            self.startMission = True
             await self.drone.action.arm()
-            await self.drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, 0.0, 0.0))
+            await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
             await self.drone.offboard.start()
             print("Simulation starting offboard.")
 
@@ -125,9 +126,9 @@ class CntrlPx4:
             if self.flightMode != flight_mode:
                 print("FlightMode:", flight_mode,"hello")
                 self.flightMode = flight_mode
-                if flight_mode in ['MANUAL']:
-                    print("in if statement")
-                    self.switch_integrators()
+                # if flight_mode in ['MANUAL']:
+                #     print("in if statement")
+                #     self.switch_integrators()
                 if not self.startMission: 
                     self.startMission = True
 
