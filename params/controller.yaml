@@ -3,20 +3,20 @@ velocity_controller: {
   kiN: 0.05, ##0.05,
   kdN: 0.2, #1.0,
   tauN: 0.05,
-  maxNDot: 5.0,
+  maxNDot: 3.0,
   conditionalIntegratorThresholdN: 1000.0, #high conditional integrator effectively keeps the integrator on
 
   kpE: 1.0, #2.5,
   kiE: 0.05, ##0.05,
   kdE: 0.2, #1.0,
   tauE: 0.05,
-  maxEDot: 5.0,
+  maxEDot: 3.0,
   conditionalIntegratorThresholdE: 1000.0,
 
   kpD: 1.0, #2.5,
   kiD: 0.05, ##0.05,
   kdD: 0.4, #1.0,
   tauD: 0.05,
-  maxDDot: 5.0,
+  maxDDot: 3.0,
   conditionalIntegratorThresholdD: 1000.0,
 }

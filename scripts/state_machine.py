@@ -23,7 +23,7 @@ class StateMachine:
 
         self.missionThreshold = rospy.get_param('~missionThreshold', 0.3)
         self.rendevousThreshold = rospy.get_param('~rendevousThreshold', 0.3)
-        self.rendevousHeight = rospy.get_param('~descendHeight', -2.0)
+        self.rendevousHeight = rospy.get_param('~rendevousHeight', -2.0)
         self.landingThreshold = rospy.get_param('~landingThreshold', 0.1)
         self.landingHeight = rospy.get_param('~landingHeight', -0.15)
         self.autoLand = rospy.get_param('~autoLand', False)
@@ -57,9 +57,9 @@ class StateMachine:
         self.RBase = R.from_rotvec(np.array([0.0,0.0,msg.z])) #could add other orientations if needed.
 
     def update_hlc(self):
-        if self.missionState == 1 or self.missionState == 2:
+        if self.missionState == 1:
             self.rendevous()
-        elif self.missionState == 5:
+        elif self.missionState == 2:
             self.descend()
         elif self.missionState == 3:
             self.land()

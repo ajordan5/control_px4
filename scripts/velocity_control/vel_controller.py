@@ -99,7 +99,7 @@ class VelCntrl:
         cmd = [cmdX,cmdY,cmdZ]
         self.prev_time = self.time
 
-        # print('down integrator = ', self.downPid.integrator) #Use to make sure there is no integrator wind up.
+        #print('down integrator = ', self.downPid.integrator) #Use to make sure there is no integrator wind up.
         return cmd
 
     def add_feed_forward(self,cmdVel):
