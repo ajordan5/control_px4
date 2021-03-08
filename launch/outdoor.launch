@@ -15,5 +15,5 @@
         <remap from="posVelEcef" to="$(arg posVelEcef)"/>
     </node>
     <include file="$(find control_px4)/launch/include/control_px4.launch"/>
-    <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/mocap/$(arg bag_filename).bag --all"/>
+    <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/outdoor/$(arg bag_filename).bag --all"/>
 </launch>
