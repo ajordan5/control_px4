@@ -20,4 +20,5 @@
         <remap from="velCmd" to="/vel_cmd"/>
         <remap from="position_measurement" to="/pose_update"/>
     </node>
+    <node name="quat2euler" pkg="control_px4" type="quat2euler.py" output="screen"/>
 </launch>
