@@ -138,6 +138,10 @@ class CntrlPx4:
                 self.prevPoseTime = self.pose.time_usec
             await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
 
+    async def get_status():
+        async for status in self.drone.telemetry.status_text():
+            print("status update: ", status.text)
+
 if __name__ == "__main__":
     rospy.init_node('control_px4', anonymous=True)
     try:
