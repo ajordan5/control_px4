@@ -108,6 +108,7 @@ class CntrlPx4:
 
         print("Start updating position")
         # 100 hz seems to be the max odom rate.
+        asyncio.create_task(self.get_status())
         await self.drone.telemetry.set_rate_odometry(100)
         await asyncio.sleep(2)
         asyncio.create_task(self.input_meas_output_est())
@@ -138,9 +139,9 @@ class CntrlPx4:
                 self.prevPoseTime = self.pose.time_usec
             await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
 
-    async def get_status():
+    async def get_status(self):
         async for status in self.drone.telemetry.status_text():
-            print("status update: ", status.text)
+            print(status.type, status.text)
 
 if __name__ == "__main__":
     rospy.init_node('control_px4', anonymous=True)
