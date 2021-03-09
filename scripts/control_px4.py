@@ -130,6 +130,7 @@ class CntrlPx4:
                 else:
                     self.switch_integrators(False)
                     self.offBoardOn = False
+        print('finished')
 
     async def input_meas_output_est(self):
         async for odom in self.drone.telemetry.odometry():
