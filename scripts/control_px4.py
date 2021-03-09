@@ -2,7 +2,7 @@
 
 import asyncio
 from mavsdk import System
-from mavsdk.offboard import (OffboardError, VelocityNedYaw)
+from mavsdk.offboard import (OffboardError, PositionNedYaw, VelocityNedYaw)
 from mavsdk.mocap import (AttitudePositionMocap,VisionPositionEstimate,Quaternion,PositionBody,AngleBody,Covariance)
 from mavsdk.telemetry import FlightMode
 import navpy
@@ -16,7 +16,8 @@ from std_msgs.msg import Bool
 
 class CntrlPx4:
     def __init__(self):
-        self.velCmd = [0.0,0.0,0.0]
+        self.positionCommands = PositionNedYaw(0.0,0.0,0.0,0.0)
+        self.feedForwardVelocity = VelocityNedYaw(0.0,0.0,0.0,0.0)
         self.prevPoseTime = 0.0
         self.estimateMsg = Odometry()
         self.meas1_received = False
@@ -27,11 +28,16 @@ class CntrlPx4:
 
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
         self.switch_integrators_pub_ = rospy.Publisher('switch_integrators',Bool,queue_size=5,latch=True)
-        self.vel_cmd_sub_ = rospy.Subscriber('velCmd', Point, self.velCmdCallback, queue_size=5)
+        self.commands_sub_ = rospy.Subscriber('commands', Odometry, self.commandsCallback, queue_size=5)
         self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
     
-    def velCmdCallback(self,msg):
-        self.velCmd = [msg.x,msg.y,msg.z]
+    def commandsCallback(self,msg):
+        self.positionCommands.north_m = msg.pose.pose.position.x
+        self.positionCommands.east_m = msg.pose.pose.position.y
+        self.positionCommands.down_m = msg.pose.pose.position.z
+        self.feedForwardVelocity.north_m_s = msg.twist.twist.linear.x
+        self.feedForwardVelocity.east_m_s = msg.twist.twist.linear.y
+        self.feedForwardVelocity.down_m_s = msg.twist.twist.linear.z
 
     def positionMeasurementCallback(self,msg):
         time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
@@ -116,7 +122,7 @@ class CntrlPx4:
 
         if self.sim == True:
             await self.drone.action.arm()
-            await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
+            await self.drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
             await self.drone.offboard.start()
             print("Simulation starting offboard.")
 
@@ -137,7 +143,7 @@ class CntrlPx4:
             if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await self.drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
-            await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
+            await self.drone.offboard.set_position_velocity_ned(self.positionCommands,self.feedForwardVelocity)
 
     async def get_status(self):
         async for status in self.drone.telemetry.status_text():
