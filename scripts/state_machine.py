@@ -35,15 +35,16 @@ class StateMachine:
         self.rover2BaseRelPos = [0.0,0.0,0.0]
         self.RBase = R.from_rotvec(np.pi/180.0*np.array([0.0,0.0,0.0])) 
         self.currentWaypointIndex = 0
+        self.feedForwardVelocity = [0.0,0.0,0.0]
 
         self.hlcMsg = PoseStamped()
         self.beginLandingRoutineMsg = Bool()
-        self.hlc_pub_ = rospy.Publisher('hlc',PoseStamped,queue_size=5,latch=True)
+        self.hlc_pub_ = rospy.Publisher('hlc',Odometry,queue_size=5,latch=True)
         self.begin_landing_routine_pub_ = rospy.Publisher('begin_landing_routine',Bool,queue_size=5,latch=True)
         self.rover2BaseRelPos_sub_ = rospy.Subscriber('rover2BaseRelPos', Point, self.rover2BaseRelPosCallback, queue_size=5)
         self.odom_sub_ = rospy.Subscriber('odom',Odometry,self.odomCallback, queue_size=5)
         self.base_heading_sub_ = rospy.Subscriber('base_heading',Vector3,self.baseHeadingCallback, queue_size=5)
-        self.base_velocity_sub_ = rospy.Subscriber('base_pve',PosVelEcef,self.basePVECallback, queue_size=5)
+        self.base_velocity_sub_ = rospy.Subscriber('base_velocity',Vector3,self.baseVelocityCallback, queue_size=5)
 
         while not rospy.is_shutdown():
             rospy.spin()
@@ -58,8 +59,10 @@ class StateMachine:
     def baseHeadingCallback(self,msg):
         self.RBase = R.from_rotvec(np.array([0.0,0.0,msg.z])) #could add other orientations if needed.
 
-    def basePVECallback(self,msg):
-        self.feedForwardVelocity = msg.velocity
+    def baseVelocityCallback(self,msg):
+        self.feedForwardVelocity[0] = msg.x
+        self.feedForwardVelocity[1] = msg.y
+        self.feedForwardVelocity[2] = msg.z
 
     def update_hlc(self):
         if self.missionState == 1:
@@ -113,9 +116,9 @@ class StateMachine:
         return [currentWaypoint,self.feedForwardVelocity]
 
     def publish_hlc(self,commands):
-        self.hlc.pose.pose.posiiton.x = commands[0][0]
-        self.hlc.pose.pose.posiiton.y = commands[0][1]
-        self.hlc.pose.pose.posiiton.z = commands[0][2]
+        self.hlc.pose.pose.position.x = commands[0][0]
+        self.hlc.pose.pose.position.y = commands[0][1]
+        self.hlc.pose.pose.position.z = commands[0][2]
         self.hlc.twist.twist.linear.x = commands[1][0]
         self.hlc.twist.twist.linear.y = commands[1][1]
         self.hlc.twist.twist.linear.z = commands[1][2]

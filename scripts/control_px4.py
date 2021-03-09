@@ -122,7 +122,7 @@ class CntrlPx4:
 
         if self.sim == True:
             await self.drone.action.arm()
-            await self.drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
+            await self.drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
             await self.drone.offboard.start()
             print("Simulation starting offboard.")
 

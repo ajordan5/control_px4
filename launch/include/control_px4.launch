@@ -6,7 +6,7 @@
         <remap from="rover2BaseRelPos" to="/rover2Base_relPos_stripped"/>
         <remap from="odom" to="/estimate"/>
         <remap from="base_heading" to="/base_heading"/>
-        <remap from="base_pve" to="/boat/posVelEcef"/>
+        <remap from="base_velocity" to="/base_velocity"/>
     </node>
     <!-- <rosparam command="load" file="$(find control_px4)/params/controller.yaml"/> -->
     <!-- <node name="velocity_controller" pkg="control_px4" type="vel_controller.py" output="screen">
@@ -18,7 +18,7 @@
     </node> -->
     <rosparam command="load" file="$(find control_px4)/params/control_px4.yaml"/>
     <node name="control_px4" pkg="control_px4" type="control_px4.py" output="screen">
-        <remap from="commands" to="/hlc"/>
+        <!-- <remap from="commands" to="/hlc"/> -->
         <remap from="position_measurement" to="/pose_update"/>
     </node>
     <node name="quat2euler" pkg="control_px4" type="quat2euler.py" output="screen"/>
