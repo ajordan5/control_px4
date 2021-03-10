@@ -106,20 +106,31 @@ class CntrlPx4:
                 print(f"Drone discovered with UUID: {state.uuid}")
                 break
 
+        print("Start updating position")
+        # 100 hz seems to be the max odom rate.
+        asyncio.create_task(self.get_status())
+        await self.drone.telemetry.set_rate_odometry(100)
+        await asyncio.sleep(2)
+        asyncio.create_task(self.input_meas_output_est())
+        await asyncio.sleep(5)
+
         if self.sim == True:
             await self.drone.action.arm()
             await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
             await self.drone.offboard.start()
             print("Simulation starting offboard.")
 
-        print("Start updating position")
-        # 100 hz seems to be the max odom rate.
-        await self.drone.telemetry.set_rate_odometry(100)
-        await asyncio.sleep(2)
-        await asyncio.gather(self.get_status(),self.input_meas_output_est(),self.flight_modes())
+        # print("Start updating position")
+        # # 100 hz seems to be the max odom rate.
+        # await self.drone.telemetry.set_rate_odometry(100)
+        # await asyncio.sleep(2)
+        # await asyncio.gather(self.get_status(),self.input_meas_output_est(),self.flight_modes())
 
-    async def flight_modes(self):
+    # async def flight_modes(self):
+        counter = 1
         async for flight_mode in self.drone.telemetry.flight_mode():
+            print('checking_flight_mode',counter)
+            counter = counter+1
             if self.flightMode != flight_mode:
                 print("FlightMode:", flight_mode)
                 self.flightMode = flight_mode
