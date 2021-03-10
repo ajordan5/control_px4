@@ -64,8 +64,8 @@ class StateMachine:
         elif self.missionState == 3:
             self.land()
         else:
-            #self.rendevous()
-            self.fly_mission()
+            self.rendevous()
+            #self.fly_mission()
 
     def fly_mission(self):
         currentWaypoint = self.waypoints[self.currentWaypointIndex]
