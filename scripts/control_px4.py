@@ -106,20 +106,19 @@ class CntrlPx4:
                 print(f"Drone discovered with UUID: {state.uuid}")
                 break
 
-        print("Start updating position")
-        # 100 hz seems to be the max odom rate.
-        asyncio.create_task(self.get_status())
-        await self.drone.telemetry.set_rate_odometry(100)
-        await asyncio.sleep(2)
-        asyncio.create_task(self.input_meas_output_est())
-        await asyncio.sleep(5)
-
         if self.sim == True:
             await self.drone.action.arm()
             await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
             await self.drone.offboard.start()
             print("Simulation starting offboard.")
 
+        print("Start updating position")
+        # 100 hz seems to be the max odom rate.
+        await self.drone.telemetry.set_rate_odometry(100)
+        await asyncio.sleep(2)
+        await asyncio.gather(self.get_status(),self.input_meas_output_est(),self.flight_modes())
+
+    async def flight_modes(self):
         async for flight_mode in self.drone.telemetry.flight_mode():
             if self.flightMode != flight_mode:
                 print("FlightMode:", flight_mode)
@@ -130,7 +129,6 @@ class CntrlPx4:
                 else:
                     self.switch_integrators(False)
                     self.offBoardOn = False
-        print('finished')
 
     async def input_meas_output_est(self):
         async for odom in self.drone.telemetry.odometry():
@@ -151,7 +149,7 @@ if __name__ == "__main__":
         #asyncio.ensure_future(cntrl_px4.run())
         loop = asyncio.get_event_loop()
         loop.run_until_complete(cntrl_px4.run())
-        loop.run_forever()
+        loop.run_forever() #maybe need to remove this?
     except:
         rospy.ROSInterruptException
     pass
