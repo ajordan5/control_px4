@@ -120,11 +120,11 @@ class CntrlPx4:
             await self.drone.offboard.start()
             print("Simulation starting offboard.")
 
-        # print("Start updating position")
-        # # 100 hz seems to be the max odom rate.
-        # await self.drone.telemetry.set_rate_odometry(100)
-        # await asyncio.sleep(2)
-        # await asyncio.gather(self.get_status(),self.input_meas_output_est(),self.flight_modes())
+    #     print("Start updating position")
+    #     # 100 hz seems to be the max odom rate.
+    #     await self.drone.telemetry.set_rate_odometry(100)
+    #     await asyncio.sleep(2)
+    #     await asyncio.gather(self.get_status(),self.input_meas_output_est(),self.flight_modes())
 
     # async def flight_modes(self):
         counter = 1
