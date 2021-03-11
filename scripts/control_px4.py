@@ -23,6 +23,13 @@ class CntrlPx4:
         self.flightMode = 'none'
         self.offBoardOn = False
         self.sim = rospy.get_param('~sim', False)
+        self.battery = 0
+        self.in_air = 0
+        self.arm_status = 0
+        self.euler = 0
+        self.health = 0
+        self.landed = 0
+        self.rc_status = 0
         self.systemAddress = rospy.get_param('~systemAddress', "serial:///dev/ttyUSB0:921600")
 
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
@@ -97,6 +104,7 @@ class CntrlPx4:
 
     async def run(self):
         drone = System()
+        print('system address = ', self.systemAddress)
         await drone.connect(system_address=self.systemAddress)
 
         print("Waiting for drone to connect...")
@@ -105,17 +113,30 @@ class CntrlPx4:
                 print(f"Drone discovered with UUID: {state.uuid}")
                 break
 
-        # asyncio.ensure_future(self.flight_modes(drone))
+        #TODO publish all of these messages, so that rosbags contain this information
+        await drone.telemetry.set_rate_odometry(100)
+        # await drone.telemetry.set_rate_attitude(1) #doesn't seem to affect euler?
+        await drone.telemetry.set_rate_battery(0.1)
+        await drone.telemetry.set_rate_in_air(1)
+        await drone.telemetry.set_rate_landed_state(1)
+        await drone.telemetry.set_rate_rc_status(0.1)
+        asyncio.ensure_future(self.flight_modes(drone))
         asyncio.ensure_future(self.input_meas_output_est(drone))
-        # asyncio.ensure_future(self.print_status(drone))
+        asyncio.ensure_future(self.print_status(drone))
+        asyncio.ensure_future(self.print_battery(drone))
+        asyncio.ensure_future(self.print_in_air(drone))
+        asyncio.ensure_future(self.print_armed(drone))
+        # asyncio.ensure_future(self.print_euler(drone))
+        asyncio.ensure_future(self.print_health(drone))
+        asyncio.ensure_future(self.print_landed_state(drone))
+        asyncio.ensure_future(self.print_rc_status(drone))
 
         if self.sim == True:
-           await drone.action.arm()
-           await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
-           await drone.offboard.start()
-           print("Simulation starting offboard.")
+          await drone.action.arm()
+          await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
+          await drone.offboard.start()
+          print("Simulation starting offboard.")
         print('end of run')
-        #once this ends I am getting a ros error.  Could be that the connections are no longer available?
         
     async def flight_modes(self,drone):
         counter = 1
@@ -131,31 +152,60 @@ class CntrlPx4:
                 else:
                     self.switch_integrators(False)
                     self.offBoardOn = False
-            if counter == 30:
-                break
 
     async def input_meas_output_est(self,drone):
-        counter = 1
         async for odom in drone.telemetry.odometry():
-            counter = counter+1
-            print('counter = ',counter)
             self.publish_estimate(odom)
             if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
-            print('set points = ', self.velCmd)
-            # await drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
-            await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0,0.0,-2.0,0.0))
-            if counter == 100:
-                break
+            await drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
 
     async def print_status(self,drone):
-        counter = 1
         async for status in drone.telemetry.status_text():
-            counter = counter+1
             print(status.type, status.text)
-            if counter == 3:
-                break
+
+    async def print_battery(self,drone):
+        async for battery in drone.telemetry.battery():
+            if battery != self.battery:
+                print(f"Battery: {battery}")
+                self.battery = battery
+
+    async def print_in_air(self,drone):
+        async for in_air in drone.telemetry.in_air():
+            if in_air != self.in_air:
+                print(f"In air: {in_air}")
+                self.in_air = in_air
+
+    async def print_armed(self,drone):
+        async for arm_status in drone.telemetry.armed():
+            if arm_status != self.arm_status:
+                print(f"Armed: {arm_status}")
+                self.arm_status = arm_status
+
+    async def print_euler(self,drone):
+        async for euler in drone.telemetry.attitude_euler():
+            if euler != self.euler:
+                print(f"euler: {euler}")
+                self.euler = euler
+
+    async def print_health(self,drone):
+        async for health in drone.telemetry.health_all_okay():
+            if heath != self.health:
+                print(f"health all okay: {health}")
+                self.health = health
+
+    async def print_landed_state(self,drone):
+        async for landed in drone.telemetry.landed_state():
+            if landed != self.landed:
+                print(f"landed: {landed}")
+                self.landed = landed
+
+    async def print_rc_status(self,drone):
+        async for rc_status in drone.telemetry.rc_status():
+            if rc_status != self.rc_status:
+                print(f"rc status: {rc_status}")
+                self.rc_status = rc_status
 
 if __name__ == "__main__":
     rospy.init_node('control_px4', anonymous=True)
