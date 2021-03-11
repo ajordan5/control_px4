@@ -29,6 +29,8 @@ class CntrlPx4:
         self.switch_integrators_pub_ = rospy.Publisher('switch_integrators',Bool,queue_size=5,latch=True)
         self.vel_cmd_sub_ = rospy.Subscriber('velCmd', Point, self.velCmdCallback, queue_size=5)
         self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
+        
+        #rospy.spin()
     
     def velCmdCallback(self,msg):
        self.velCmd = [msg.x,msg.y,msg.z]
@@ -105,11 +107,12 @@ class CntrlPx4:
             if state.is_connected:
                 print(f"Drone discovered with UUID: {state.uuid}")
                 break
+        await asyncio.sleep(5)
 
         #print("Start updating position")
         ## 100 hz seems to be the max odom rate.
         #asyncio.create_task(self.get_status())
-        #await self.drone.telemetry.set_rate_odometry(100)
+        #await drone.telemetry.set_rate_odometry(100)
         #await asyncio.sleep(2)
         #asyncio.create_task(self.input_meas_output_est())
         #await asyncio.sleep(5)
@@ -123,43 +126,48 @@ class CntrlPx4:
         print("Start updating position")
         # 100 hz seems to be the max odom rate.
         await drone.telemetry.set_rate_odometry(100)
-        await asyncio.sleep(2)
+        await asyncio.sleep(5)
         await asyncio.gather(self.get_status(drone),self.input_meas_output_est(drone),self.flight_modes(drone))
     #await asyncio.gather(self.input_meas_output_est())
         print('end of run')
-
+        #once this ends I am getting a ros error.  Could be that the connections are no longer available?
+        
     async def flight_modes(self,drone):
         counter = 1
-        await drone.telemetry.set_rate_odometry(100)
-        #async for flight_mode in self.drone.telemetry.flight_mode():
-            #print('checking_flight_mode',counter)
-            #counter = counter+1
-            #if self.flightMode != flight_mode:
-            #    print("FlightMode:", flight_mode)
-            #    self.flightMode = flight_mode
-            #    if flight_mode == FlightMode(7):
-            #        self.switch_integrators(True)
-            #        self.offBoardOn = True
-            #    else:
-            #        self.switch_integrators(False)
-            #        self.offBoardOn = False
+        async for flight_mode in drone.telemetry.flight_mode():
+            print('checking_flight_mode',counter)
+            counter = counter+1
+            if self.flightMode != flight_mode:
+                print("FlightMode:", flight_mode)
+                self.flightMode = flight_mode
+                if flight_mode == FlightMode(7):
+                    self.switch_integrators(True)
+                    self.offBoardOn = True
+                else:
+                    self.switch_integrators(False)
+                    self.offBoardOn = False
+            if counter == 30:
+                break
 
     async def input_meas_output_est(self,drone):
-        a = 1
-        await drone.telemetry.set_rate_odometry(100)
-        #async for odom in self.drone.telemetry.odometry():
-            #a = 1
-            #self.publish_estimate(odom)
-            #if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
-            #    await self.drone.mocap.set_vision_position_estimate(self.pose)
-            #    self.prevPoseTime = self.pose.time_usec
-            #await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
+        counter = 1
+        async for odom in drone.telemetry.odometry():
+            counter = counter+1
+            self.publish_estimate(odom)
+            if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
+                await drone.mocap.set_vision_position_estimate(self.pose)
+                self.prevPoseTime = self.pose.time_usec
+            await drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
+            if counter == 100:
+                break
 
     async def get_status(self,drone):
-        a = 1
-        await drone.telemetry.set_rate_odometry(100)
-        #async for status in self.drone.telemetry.status_text():
-            #print(status.type, status.text)
+        counter = 1
+        async for status in drone.telemetry.status_text():
+            counter = counter+1
+            print(status.type, status.text)
+            if counter == 3:
+                break
 
 if __name__ == "__main__":
     rospy.init_node('control_px4', anonymous=True)
