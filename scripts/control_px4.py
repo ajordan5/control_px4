@@ -15,14 +15,14 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from std_msgs.msg import Bool
 
 class CntrlPx4:
-#    def __init__(self):
-#        self.velCmd = [0.0,0.0,0.0]
+    def __init__(self):
+       self.velCmd = [0.0,0.0,0.0]
 #        self.prevPoseTime = 0.0
 #        self.estimateMsg = Odometry()
 #        self.meas1_received = False
 #        self.flightMode = 'none'
 #        self.offBoardOn = False
-#        self.sim = rospy.get_param('~sim', False)
+       self.sim = rospy.get_param('~sim', False)
 #        self.systemAddress = rospy.get_param('~systemAddress', "serial:///dev/ttyUSB0:921600")
 
         #self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
@@ -96,8 +96,8 @@ class CntrlPx4:
     async def run(self):
         """ Does Offboard control using velocity NED coordinates. """
 
-        drone = System()
-        await drone.connect(system_address="serial:///dev/ttyUSB0:921600")
+        drone = System() #switched this to not be a member of the class.  Maybe I was getting rid of it globally somehow, and that caused the other references to it to stop?
+        await drone.connect(system_address="udp://:14540")
 
         print("Waiting for drone to connect...")
         await asyncio.sleep(5)
@@ -114,22 +114,23 @@ class CntrlPx4:
         #asyncio.create_task(self.input_meas_output_est())
         #await asyncio.sleep(5)
 
-        #if self.sim == True:
-        #    await self.drone.action.arm()
-        #    await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
-        #    await self.drone.offboard.start()
-        #    print("Simulation starting offboard.")
+        if self.sim == True:
+           await drone.action.arm()
+           await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
+           await drone.offboard.start()
+           print("Simulation starting offboard.")
 
         print("Start updating position")
         # 100 hz seems to be the max odom rate.
-        #await self.drone.telemetry.set_rate_odometry(100)
+        await drone.telemetry.set_rate_odometry(100)
         await asyncio.sleep(2)
-        await asyncio.gather(self.get_status(),self.input_meas_output_est(),self.flight_modes())
+        await asyncio.gather(self.get_status(drone),self.input_meas_output_est(drone),self.flight_modes(drone))
     #await asyncio.gather(self.input_meas_output_est())
         print('end of run')
 
-    async def flight_modes(self):
+    async def flight_modes(self,drone):
         counter = 1
+        await drone.telemetry.set_rate_odometry(100)
         #async for flight_mode in self.drone.telemetry.flight_mode():
             #print('checking_flight_mode',counter)
             #counter = counter+1
@@ -143,8 +144,9 @@ class CntrlPx4:
             #        self.switch_integrators(False)
             #        self.offBoardOn = False
 
-    async def input_meas_output_est(self):
+    async def input_meas_output_est(self,drone):
         a = 1
+        await drone.telemetry.set_rate_odometry(100)
         #async for odom in self.drone.telemetry.odometry():
             #a = 1
             #self.publish_estimate(odom)
@@ -153,19 +155,20 @@ class CntrlPx4:
             #    self.prevPoseTime = self.pose.time_usec
             #await self.drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
 
-    async def get_status(self):
+    async def get_status(self,drone):
         a = 1
+        await drone.telemetry.set_rate_odometry(100)
         #async for status in self.drone.telemetry.status_text():
             #print(status.type, status.text)
 
 if __name__ == "__main__":
-    #rospy.init_node('control_px4', anonymous=True)
-    #try:
-    cntrl_px4 = CntrlPx4()
+    rospy.init_node('control_px4', anonymous=True)
+    try:
+        cntrl_px4 = CntrlPx4()
         #asyncio.ensure_future(cntrl_px4.run())
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(cntrl_px4.run())
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(cntrl_px4.run())
        # loop.run_forever() #maybe need to remove this?
-    #except:
-    #    rospy.ROSInterruptException
-    #pass
+    except:
+       rospy.ROSInterruptException
+    pass
