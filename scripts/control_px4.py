@@ -97,7 +97,7 @@ class CntrlPx4:
         """ Does Offboard control using velocity NED coordinates. """
 
         drone = System() #switched this to not be a member of the class.  Maybe I was getting rid of it globally somehow, and that caused the other references to it to stop?
-        await drone.connect(system_address="udp://:14540")
+        await drone.connect(system_address=self.systemAddress)
 
         print("Waiting for drone to connect...")
         await asyncio.sleep(5)
