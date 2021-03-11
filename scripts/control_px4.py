@@ -96,39 +96,24 @@ class CntrlPx4:
        self.switch_integrators_pub_.publish(flag)
 
     async def run(self):
-        """ Does Offboard control using velocity NED coordinates. """
-
-        drone = System() #switched this to not be a member of the class.  Maybe I was getting rid of it globally somehow, and that caused the other references to it to stop?
+        drone = System()
         await drone.connect(system_address=self.systemAddress)
 
         print("Waiting for drone to connect...")
-        await asyncio.sleep(5)
         async for state in drone.core.connection_state():
             if state.is_connected:
                 print(f"Drone discovered with UUID: {state.uuid}")
                 break
-        await asyncio.sleep(5)
 
-        #print("Start updating position")
-        ## 100 hz seems to be the max odom rate.
-        #asyncio.create_task(self.get_status())
-        #await drone.telemetry.set_rate_odometry(100)
-        #await asyncio.sleep(2)
-        #asyncio.create_task(self.input_meas_output_est())
-        #await asyncio.sleep(5)
+        # asyncio.ensure_future(self.flight_modes(drone))
+        asyncio.ensure_future(self.input_meas_output_est(drone))
+        # asyncio.ensure_future(self.print_status(drone))
 
         if self.sim == True:
            await drone.action.arm()
            await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
            await drone.offboard.start()
            print("Simulation starting offboard.")
-
-        print("Start updating position")
-        # 100 hz seems to be the max odom rate.
-        await drone.telemetry.set_rate_odometry(100)
-        await asyncio.sleep(5)
-        await asyncio.gather(self.get_status(drone),self.input_meas_output_est(drone),self.flight_modes(drone))
-    #await asyncio.gather(self.input_meas_output_est())
         print('end of run')
         #once this ends I am getting a ros error.  Could be that the connections are no longer available?
         
@@ -153,15 +138,18 @@ class CntrlPx4:
         counter = 1
         async for odom in drone.telemetry.odometry():
             counter = counter+1
+            print('counter = ',counter)
             self.publish_estimate(odom)
             if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
-            await drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
+            print('set points = ', self.velCmd)
+            # await drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
+            await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0,0.0,-2.0,0.0))
             if counter == 100:
                 break
 
-    async def get_status(self,drone):
+    async def print_status(self,drone):
         counter = 1
         async for status in drone.telemetry.status_text():
             counter = counter+1
@@ -173,10 +161,8 @@ if __name__ == "__main__":
     rospy.init_node('control_px4', anonymous=True)
     try:
         cntrl_px4 = CntrlPx4()
-        #asyncio.ensure_future(cntrl_px4.run())
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(cntrl_px4.run())
-       # loop.run_forever() #maybe need to remove this?
+        asyncio.ensure_future(cntrl_px4.run())
+        loop = asyncio.get_event_loop().run_forever()
     except:
        rospy.ROSInterruptException
     pass
