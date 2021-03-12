@@ -3,7 +3,7 @@
 import asyncio
 from mavsdk import System
 from mavsdk.offboard import (OffboardError, PositionNedYaw, VelocityNedYaw)
-from mavsdk.mocap import (MavFrame,Odometry,Quaternion,PositionBody,AngleBody,Covariance)
+from mavsdk.mocap import (MavFrame,Odometry,PositionBody,Quaternion,SpeedBody,angularVelocityBody,Covariance)
 from mavsdk.telemetry import FlightMode
 import navpy
 import rospy
@@ -17,7 +17,8 @@ from std_msgs.msg import Bool
 class CntrlPx4:
     def __init__(self):
         self.frameId = MavFrame(0) #Mocap NED coordinate frame
-        self.qUpdate = Quaternion(1.0,0.0,0.0,0.0) #Right now there is no external orientation measurement.  Covariance is set very high. 
+        self.qUpdate = Quaternion(1.0,0.0,0.0,0.0) #Right now there is no external orientation measurement.  Covariance is set very high.
+        self.angularVelocityUpdate = angularVelocityBody(0.0,0.0,0.0) #Right now there is no external orientation measurement.  Covariance is set very high.
         self.positionCommands = PositionNedYaw(0.0,0.0,0.0,0.0)
         self.feedForwardVelocity = VelocityNedYaw(0.0,0.0,0.0,0.0)
         self.prevOdomUpdateTime = 0.0
@@ -38,7 +39,7 @@ class CntrlPx4:
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
         self.switch_integrators_pub_ = rospy.Publisher('switch_integrators',Bool,queue_size=5,latch=True)
         self.commands_sub_ = rospy.Subscriber('commands', Odometry, self.commandsCallback, queue_size=5)
-        self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
+        self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', Odometry, self.externalMeasurementCallback, queue_size=5)
         
         #rospy.spin()
     
@@ -50,13 +51,14 @@ class CntrlPx4:
         self.feedForwardVelocity.east_m_s = msg.twist.twist.linear.y
         self.feedForwardVelocity.down_m_s = msg.twist.twist.linear.z
 
-    def positionMeasurementCallback(self,msg):
+    def externalMeasurementCallback(self,msg):
        time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
        time = int(round(time,6)*1E6)
-       positionBody = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
+       positionBodyUpdate = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z) #is this in the body frame as well?
+       speedBodyUpdate = SpeedBody(msg.twist.twist.linear.x,msg.twist.twist.linear.y,msg.twist.twist.z) #this one is represented in the body frame.
        covarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.pose.covariance)
        poseCovariance = Covariance(covarianceMatrix)
-       self.odomUpdate = Odometry(time,self.frameId,positionBody,self.qUpdate,speedBody,angularVelocityBody,poseCovariance,velocityCovariance)
+       self.odomUpdate = Odometry(time,self.frameId,positionBodyUpdate,self.qUpdate,speedBodyUpdate,self.angularVelocityBody,poseCovariance,velocityCovariance)
        self.meas1_received = True
 
     def convert_ros_covariance_to_px4_covariance(self,rosCov):
