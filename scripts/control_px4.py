@@ -18,7 +18,7 @@ from std_msgs.msg import Bool
 
 class CntrlPx4:
     def __init__(self):
-        self.frameId = mocap.Odometry.MavFrame(0) #Mocap NED coordinate frame
+        self.frameId = mocap.Odometry.MavFrame(1) #Local_FRD, the mocap ned frame says it is not supported
         self.qUpdate = Quaternion(1.0,0.0,0.0,0.0) #Right now there is no external orientation measurement.  Covariance is set very high.
         self.angularVelocityUpdate = AngularVelocityBody(0.0,0.0,0.0) #Right now there is no external orientation measurement.  Covariance is set very high.
         self.positionCommands = PositionNedYaw(0.0,0.0,0.0,0.0)
