@@ -3,22 +3,24 @@
 import asyncio
 from mavsdk import System
 from mavsdk.offboard import (OffboardError, PositionNedYaw, VelocityNedYaw)
-from mavsdk.mocap import (AttitudePositionMocap,VisionPositionEstimate,Quaternion,PositionBody,AngleBody,Covariance)
+from mavsdk.mocap import (MavFrame,Odometry,Quaternion,PositionBody,AngleBody,Covariance)
 from mavsdk.telemetry import FlightMode
 import navpy
 import rospy
 import numpy as np
 
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry #May have issues since this is call the same thing as the mocap odom
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from std_msgs.msg import Bool
 
 class CntrlPx4:
     def __init__(self):
+        self.frameId = MavFrame(0) #Mocap NED coordinate frame
+        self.qUpdate = Quaternion(1.0,0.0,0.0,0.0) #Right now there is no external orientation measurement.  Covariance is set very high. 
         self.positionCommands = PositionNedYaw(0.0,0.0,0.0,0.0)
         self.feedForwardVelocity = VelocityNedYaw(0.0,0.0,0.0,0.0)
-        self.prevPoseTime = 0.0
+        self.prevOdomUpdateTime = 0.0
         self.estimateMsg = Odometry()
         self.meas1_received = False
         self.flightMode = 'none'
@@ -51,11 +53,10 @@ class CntrlPx4:
     def positionMeasurementCallback(self,msg):
        time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
        time = int(round(time,6)*1E6)
-       angleBody = AngleBody(0.0,0.0,0.0) #Currently no angle information is given
        positionBody = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
        covarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.pose.covariance)
        poseCovariance = Covariance(covarianceMatrix)
-       self.pose = VisionPositionEstimate(time,positionBody,angleBody,poseCovariance)
+       self.odomUpdate = Odometry(time,self.frameId,positionBody,self.qUpdate,speedBody,angularVelocityBody,poseCovariance,velocityCovariance)
        self.meas1_received = True
 
     def convert_ros_covariance_to_px4_covariance(self,rosCov):
@@ -161,9 +162,9 @@ class CntrlPx4:
     async def input_meas_output_est(self,drone):
         async for odom in drone.telemetry.odometry():
             self.publish_estimate(odom)
-            if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
-                await drone.mocap.set_vision_position_estimate(self.pose)
-                self.prevPoseTime = self.pose.time_usec
+            if self.odomUpdate.time_usec != self.prevOdomUpdateTime and self.meas1_received:
+                await drone.mocap.set_odometry(self.odomUpdate)
+                self.prevOdomUpdateTime = self.odomUpdate.time_usec
             await drone.offboard.set_position_velocity_ned(self.positionCommands,self.feedForwardVelocity)
 
     async def print_status(self,drone):
