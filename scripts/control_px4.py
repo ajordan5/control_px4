@@ -139,9 +139,9 @@ class CntrlPx4:
         asyncio.ensure_future(self.print_rc_status(drone))
 
         if self.sim == True:
-            await self.drone.action.arm()
-            await self.drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
-            await self.drone.offboard.start()
+            await drone.action.arm()
+            await drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
+            await drone.offboard.start()
             print("Simulation starting offboard.")
 
         print('end of run')
@@ -164,7 +164,7 @@ class CntrlPx4:
             if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
-            await self.drone.offboard.set_position_velocity_ned(self.positionCommands,self.feedForwardVelocity)
+            await drone.offboard.set_position_velocity_ned(self.positionCommands,self.feedForwardVelocity)
 
     async def print_status(self,drone):
         async for status in drone.telemetry.status_text():
@@ -196,7 +196,7 @@ class CntrlPx4:
 
     async def print_health(self,drone):
         async for health in drone.telemetry.health_all_okay():
-            if heath != self.health:
+            if health != self.health:
                 print(f"health all okay: {health}")
                 self.health = health
 
