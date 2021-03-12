@@ -104,8 +104,6 @@ class Nav:
         roverHeadingENU = roverEulerENU[2]
         roverHeadingNED = self.wrap((roverHeadingENU-90.0),-180.0,180.0)*-1.0
         roverHeadingNEDNoise = roverHeadingNED + 30.0
-        print('heading = ', roverHeadingNED)
-        print('noisy heading = ', roverHeadingNEDNoise)
         roverRNED = R.from_euler('z', roverHeadingNEDNoise, degrees=True)
         roverQuatNED = roverRNED.as_quat()
 
