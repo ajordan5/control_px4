@@ -4,7 +4,7 @@ import asyncio
 from mavsdk import System
 from mavsdk.offboard import (OffboardError, PositionNedYaw, VelocityNedYaw)
 from mavsdk import mocap
-from mavsdk.mocap import (PositionBody,Quaternion,SpeedBody,AngularVelocityBody,Covariance)
+from mavsdk.mocap import (VisionPositionEstimate,AngleBody,PositionBody,Quaternion,SpeedBody,AngularVelocityBody,Covariance)
 from mavsdk.telemetry import FlightMode
 import navpy
 import rospy
@@ -67,6 +67,7 @@ class CntrlPx4:
        twistCovariance = Covariance(twistCovarianceMatrix)
        self.odomUpdate = mocap.Odometry(time,self.frameId,positionBodyUpdate,self.qUpdate,speedBodyUpdate,self.angularVelocityUpdate,poseCovariance,twistCovariance)
        self.meas1_received = True
+       self.poseUpdate = VisionPositionEstimate(time,positionBodyUpdate,AngleBody(0.0,0.0,0.0),poseCovariance)
 
     def convert_ros_covariance_to_px4_covariance(self,rosCov):
        px4Cov = [0]*21
@@ -152,7 +153,7 @@ class CntrlPx4:
 
         if self.sim == True:
             await drone.action.arm()
-            await drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
+            # await drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
             await drone.offboard.start()
             print("Simulation starting offboard.")
 
@@ -173,9 +174,19 @@ class CntrlPx4:
     async def input_meas_output_est(self,drone):
         async for odom in drone.telemetry.odometry():
             self.publish_estimate(odom)
-            if self.odomUpdate.time_usec != self.prevOdomUpdateTime and self.meas1_received:
+            if self.poseUpdate.time_usec != self.prevOdomUpdateTime and self.meas1_received:
+                print('odom: ')
+                print('time = ', self.odomUpdate.time_usec)
+                print('frame id = ', self.odomUpdate.frame_id)
+                print('position = ', self.odomUpdate.position_body.x_m,self.odomUpdate.position_body.y_m,self.odomUpdate.position_body.z_m)
+                print('q = ', self.odomUpdate.q.x,self.odomUpdate.q.y,self.odomUpdate.q.z,self.odomUpdate.q.w)
+                print('speed = ', self.odomUpdate.speed_body.x_m_s, self.odomUpdate.speed_body.y_m_s, self.odomUpdate.speed_body.z_m_s)
+                print('angular velocity = ', self.odomUpdate.angular_velocity_body.roll_rad_s,self.odomUpdate.angular_velocity_body.pitch_rad_s,self.odomUpdate.angular_velocity_body.yaw_rad_s)
+                print('pose covariance = ', self.odomUpdate.pose_covariance.covariance_matrix)
+                print('velocity covariance = ', self.odomUpdate.velocity_covariance.covariance_matrix)
                 await drone.mocap.set_odometry(self.odomUpdate)
-                self.prevOdomUpdateTime = self.odomUpdate.time_usec
+                # await drone.mocap.set_vision_position_estimate(self.poseUpdate)
+                self.prevOdomUpdateTime = self.poseUpdate.time_usec
             await drone.offboard.set_position_velocity_ned(self.positionCommands,self.feedForwardVelocity)
 
     async def print_status(self,drone):
