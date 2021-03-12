@@ -10,12 +10,17 @@ from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Vector3
 from ublox.msg import RelPos
 from ublox.msg import PosVelEcef
+from scipy.spatial.transform import Rotation as R
+from geometry_msgs.msg import Quaternion
+
 
 class Nav:
     def __init__(self):
         self.baseVelocity = Point()
         self.rover2Base_relPos = Point()
         self.pose_update = PoseWithCovarianceStamped()
+
+        self.roverQuatNED = Quaternion()
 
         self.roll_covariance = 1000000 #essentially infinite
         self.pitch_covariance = 1000000
@@ -89,13 +94,33 @@ class Nav:
         self.pose_update_pub_.publish(self.pose_update)
 
     def roverPose4HeadingCallback(self,msg):
-        self.orientation[0] = msg.pose.orientation.x
-        self.orientation[1] = msg.pose.orientation.y
-        self.orientation[2] = msg.pose.orientation.z
-        self.orientation[3] = msg.pose.orientation.w
+        roverQuatENU = [msg.pose.orientation.x,
+                msg.pose.orientation.y,
+                msg.pose.orientation.z,
+                msg.pose.orientation.w]
+
+        roverRENU = R.from_quat(roverQuatENU)
+        roverEulerENU = roverRENU.as_euler('xyz', degrees=True)
+        roverHeadingENU = roverEulerENU[2]
+        roverHeadingNED = self.wrap((roverHeadingENU-90.0),-180.0,180.0)*-1.0
+        roverHeadingNEDNoise = roverHeadingNED + 30.0
+        print('heading = ', roverHeadingNED)
+        print('noisy heading = ', roverHeadingNEDNoise)
+        roverRNED = R.from_euler('z', roverHeadingNEDNoise, degrees=True)
+        roverQuatNED = roverRNED.as_quat()
+
+        self.orientation[0] = roverQuatNED[0]
+        self.orientation[1] = roverQuatNED[1]
+        self.orientation[2] = roverQuatNED[2]
+        self.orientation[3] = roverQuatNED[3]
         # self.roll_covariance = self.mocap_covariance #May need to uncomment these.  Not sure how the covariance is used.
         # self.pitch_covariance = self.mocap_covariance
         self.yaw_covariance = self.mocap_covariance
+    
+    def wrap(self,angle,min,max):
+        #Not fully functional for non -180 to 180 wrappings
+        angle = (angle + max) % (2 * max) - max
+        return angle
 
 if __name__ == '__main__':
     rospy.init_node('nav', anonymous=True)

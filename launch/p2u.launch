@@ -17,6 +17,7 @@
         <remap from="posVelEcef" to="/p2u/rover/PosVelEcef"/>
         <remap from="base_posVelEcef" to="/p2u/boat/PosVelEcef"/>
         <remap from="compass_relPos" to="$(arg compass_relPos)"/>
+        <remap from="rover_pose_4_heading" to="/rover_pose"/>
     </node>
     <include file="$(find control_px4)/launch/include/control_px4.launch"/>
     <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/boatLanding_sim/$(arg bag_filename).bag --all"/>

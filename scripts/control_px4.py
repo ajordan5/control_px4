@@ -14,6 +14,9 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from std_msgs.msg import Bool
 
+from scipy.spatial.transform import Rotation as R
+
+
 class CntrlPx4:
     def __init__(self):
         self.velCmd = [0.0,0.0,0.0]
@@ -45,7 +48,9 @@ class CntrlPx4:
     def positionMeasurementCallback(self,msg):
        time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
        time = int(round(time,6)*1E6)
-       angleBody = AngleBody(0.0,0.0,0.0) #Currently no angle information is given
+       quat = R.from_quat([msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,msg.pose.pose.orientation.z,msg.pose.pose.orientation.w])
+       euler = quat.as_euler('zyx',degrees=True)
+       angleBody = AngleBody(euler[2],euler[1],euler[0]) #Currently no angle information is given
        positionBody = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
        covarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.pose.covariance)
        poseCovariance = Covariance(covarianceMatrix)
@@ -160,7 +165,7 @@ class CntrlPx4:
             if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
-            await drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
+            await drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],-90.0))
 
     async def print_status(self,drone):
         async for status in drone.telemetry.status_text():
