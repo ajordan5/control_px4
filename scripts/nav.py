@@ -6,6 +6,7 @@ import numpy as np
 import math
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Vector3
 from ublox.msg import RelPos
@@ -15,11 +16,12 @@ class Nav:
     def __init__(self):
         self.baseVelocity = Point()
         self.rover2Base_relPos = Point()
-        self.pose_update = PoseWithCovarianceStamped()
+        self.odom_update = Odometry()
 
         self.roll_covariance = 1000000 #essentially infinite
         self.pitch_covariance = 1000000
-        self.yaw_covariance = 1000000 
+        self.yaw_covariance = 1000000
+        self.angular_velocity_covariance = 1000000
         self.mocap_covariance = 0.6 #high to simulate outdoors.  Not sure what this value should really be though.
         self.orientation = [0.0,0.0,0.0,1.0]
         self.base_orientation = Vector3()
@@ -30,7 +32,7 @@ class Nav:
         # self.rover_extrapolated_relPos_pub_ = rospy.Publisher('extrap_relPos', RelPos, queue_size=5, latch=True)
         self.rover2Base_relPos_stripped_pub_ = rospy.Publisher('rover2Base_relPos_stripped', Point, queue_size=5, latch=True)
         self.base_velocity_pub_ = rospy.Publisher('base_velocity', Point, queue_size=5, latch=True)
-        self.pose_update_pub_ = rospy.Publisher('pose_update', PoseWithCovarianceStamped, queue_size=5, latch=True)
+        self.odom_update_pub_ = rospy.Publisher('external_measurement', Odometry, queue_size=5, latch=True)
         self.base_heading_pub_ = rospy.Publisher('base_heading', Vector3, queue_size=5, latch=True)
         self.base2rover_relPos_sub_ = rospy.Subscriber('base2Rover_relPos', RelPos, self.base2RoverRelPosCallback, queue_size=5)
         self.posVelEcef_sub_ = rospy.Subscriber('posVelEcef', PosVelEcef, self.posVelEcefCallback, queue_size=5)
@@ -70,23 +72,37 @@ class Nav:
             self.alt_ref = msg.lla[2]
             self.refLlaSet = True
         ned = navpy.lla2ned(msg.lla[0],msg.lla[1],msg.lla[2],self.lat_ref,self.lon_ref,self.alt_ref)
-        covariance = np.zeros(36)
-        covariance[0] = msg.horizontal_accuracy
-        covariance[7] = msg.horizontal_accuracy
-        covariance[14] = msg.vertical_accuracy
-        covariance[21] = self.roll_covariance
-        covariance[28] = self.pitch_covariance
-        covariance[35] = self.yaw_covariance
-        self.pose_update.header = msg.header
-        self.pose_update.pose.pose.position.x = ned[0]
-        self.pose_update.pose.pose.position.y = ned[1]
-        self.pose_update.pose.pose.position.z = ned[2]
-        self.pose_update.pose.pose.orientation.x = self.orientation[0]
-        self.pose_update.pose.pose.orientation.y = self.orientation[1]
-        self.pose_update.pose.pose.orientation.z = self.orientation[2]
-        self.pose_update.pose.pose.orientation.w = self.orientation[3]
-        self.pose_update.pose.covariance = covariance
-        self.pose_update_pub_.publish(self.pose_update)
+        poseCovariance = np.zeros(36)
+        poseCovariance[0] = msg.horizontal_accuracy
+        poseCovariance[7] = msg.horizontal_accuracy
+        poseCovariance[14] = msg.vertical_accuracy
+        poseCovariance[21] = self.roll_covariance
+        poseCovariance[28] = self.pitch_covariance
+        poseCovariance[35] = self.yaw_covariance
+        twistCovariance = np.zeros(36)
+        twistCovariance[0] = msg.speed_accuracy
+        twistCovariance[7] = msg.speed_accuracy
+        twistCovariance[14] = msg.speed_accuracy
+        twistCovariance[21] = self.angular_velocity_covariance
+        twistCovariance[28] = self.angular_velocity_covariance
+        twistCovariance[35] = self.angular_velocity_covariance
+        self.odom_update.header = msg.header
+        self.odom_update.pose.pose.position.x = ned[0]
+        self.odom_update.pose.pose.position.y = ned[1]
+        self.odom_update.pose.pose.position.z = ned[2]
+        self.odom_update.pose.pose.orientation.x = self.orientation[0]
+        self.odom_update.pose.pose.orientation.y = self.orientation[1]
+        self.odom_update.pose.pose.orientation.z = self.orientation[2]
+        self.odom_update.pose.pose.orientation.w = self.orientation[3]
+        self.odom_update.pose.covariance = poseCovariance
+        self.odom_update.twist.twist.linear.x = msg.velocity[0]
+        self.odom_update.twist.twist.linear.y = msg.velocity[1]
+        self.odom_update.twist.twist.linear.z = msg.velocity[2]
+        self.odom_update.twist.twist.angular.x = 0.0  #No measurement for now
+        self.odom_update.twist.twist.angular.y = 0.0
+        self.odom_update.twist.twist.angular.z = 0.0
+        self.odom_update.twist.covariance = twistCovariance
+        self.odom_update_pub_.publish(self.odom_update)
 
     def roverPose4HeadingCallback(self,msg):
         self.orientation[0] = msg.pose.orientation.x

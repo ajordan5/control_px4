@@ -19,7 +19,7 @@
     <rosparam command="load" file="$(find control_px4)/params/control_px4.yaml"/>
     <node name="control_px4" pkg="control_px4" type="control_px4.py" output="screen">
         <remap from="commands" to="/hlc"/>
-        <remap from="position_measurement" to="/pose_update"/>
+        <remap from="external_measurement" to="/external_measurement"/>
     </node>
     <node name="quat2euler" pkg="control_px4" type="quat2euler.py" output="screen"/>
 </launch>

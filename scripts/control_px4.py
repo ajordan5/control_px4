@@ -3,11 +3,13 @@
 import asyncio
 from mavsdk import System
 from mavsdk.offboard import (OffboardError, PositionNedYaw, VelocityNedYaw)
-from mavsdk.mocap import (MavFrame,Odometry,PositionBody,Quaternion,SpeedBody,angularVelocityBody,Covariance)
+from mavsdk import mocap
+from mavsdk.mocap import (PositionBody,Quaternion,SpeedBody,AngularVelocityBody,Covariance)
 from mavsdk.telemetry import FlightMode
 import navpy
 import rospy
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 
 from nav_msgs.msg import Odometry #May have issues since this is call the same thing as the mocap odom
 from geometry_msgs.msg import Point
@@ -16,9 +18,9 @@ from std_msgs.msg import Bool
 
 class CntrlPx4:
     def __init__(self):
-        self.frameId = MavFrame(0) #Mocap NED coordinate frame
+        self.frameId = mocap.Odometry.MavFrame(0) #Mocap NED coordinate frame
         self.qUpdate = Quaternion(1.0,0.0,0.0,0.0) #Right now there is no external orientation measurement.  Covariance is set very high.
-        self.angularVelocityUpdate = angularVelocityBody(0.0,0.0,0.0) #Right now there is no external orientation measurement.  Covariance is set very high.
+        self.angularVelocityUpdate = AngularVelocityBody(0.0,0.0,0.0) #Right now there is no external orientation measurement.  Covariance is set very high.
         self.positionCommands = PositionNedYaw(0.0,0.0,0.0,0.0)
         self.feedForwardVelocity = VelocityNedYaw(0.0,0.0,0.0,0.0)
         self.prevOdomUpdateTime = 0.0
@@ -34,12 +36,13 @@ class CntrlPx4:
         self.health = 0
         self.landed = 0
         self.rc_status = 0
+        self.RI2b = R.from_quat([0.0,0.0,0.0,1.0])
         self.systemAddress = rospy.get_param('~systemAddress', "serial:///dev/ttyUSB0:921600")
 
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
         self.switch_integrators_pub_ = rospy.Publisher('switch_integrators',Bool,queue_size=5,latch=True)
         self.commands_sub_ = rospy.Subscriber('commands', Odometry, self.commandsCallback, queue_size=5)
-        self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', Odometry, self.externalMeasurementCallback, queue_size=5)
+        self.positiion_measurement_sub_ = rospy.Subscriber('external_measurement', Odometry, self.externalMeasurementCallback, queue_size=5)
         
         #rospy.spin()
     
@@ -55,10 +58,14 @@ class CntrlPx4:
        time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
        time = int(round(time,6)*1E6)
        positionBodyUpdate = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z) #is this in the body frame as well?
-       speedBodyUpdate = SpeedBody(msg.twist.twist.linear.x,msg.twist.twist.linear.y,msg.twist.twist.z) #this one is represented in the body frame.
-       covarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.pose.covariance)
-       poseCovariance = Covariance(covarianceMatrix)
-       self.odomUpdate = Odometry(time,self.frameId,positionBodyUpdate,self.qUpdate,speedBodyUpdate,self.angularVelocityBody,poseCovariance,velocityCovariance)
+       speedInertialUpdate = [msg.twist.twist.linear.x,msg.twist.twist.linear.y,msg.twist.twist.linear.z]
+       speedBodyUpdateList = self.RI2b.apply(speedInertialUpdate)
+       speedBodyUpdate = SpeedBody(speedBodyUpdateList[0],speedBodyUpdateList[1],speedBodyUpdateList[2]) #this one is represented in the body frame.
+       poseCovarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.pose.covariance)
+       poseCovariance = Covariance(poseCovarianceMatrix)
+       twistCovarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.twist.covariance)
+       twistCovariance = Covariance(twistCovarianceMatrix)
+       self.odomUpdate = mocap.Odometry(time,self.frameId,positionBodyUpdate,self.qUpdate,speedBodyUpdate,self.angularVelocityUpdate,poseCovariance,twistCovariance)
        self.meas1_received = True
 
     def convert_ros_covariance_to_px4_covariance(self,rosCov):
@@ -75,6 +82,8 @@ class CntrlPx4:
        time = odom.time_usec*1E-6
        secs = int(time)
        nsecs = int((time-secs)*1E9)
+
+       self.RI2b = R.from_quat([odom.q.x,odom.q.y,odom.q.z,odom.q.w])
 
        self.estimateMsg.header.stamp.secs = secs
        self.estimateMsg.header.stamp.nsecs = nsecs
