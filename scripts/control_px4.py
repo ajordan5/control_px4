@@ -57,10 +57,10 @@ class CntrlPx4:
     def externalMeasurementCallback(self,msg):
        time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
        time = int(round(time,6)*1E6)
-       positionBodyUpdate = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z) #is this in the body frame as well?
+       positionBodyUpdate = PositionBody(0.0,0.0,0.0)#msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z) #is this in the body frame as well?
        speedInertialUpdate = [msg.twist.twist.linear.x,msg.twist.twist.linear.y,msg.twist.twist.linear.z]
        speedBodyUpdateList = self.RI2b.apply(speedInertialUpdate)
-       speedBodyUpdate = SpeedBody(speedBodyUpdateList[0],speedBodyUpdateList[1],speedBodyUpdateList[2]) #this one is represented in the body frame.
+       speedBodyUpdate = SpeedBody(0.0,0.0,0.0)#speedBodyUpdateList[0],speedBodyUpdateList[1],speedBodyUpdateList[2]) #this one is represented in the body frame.
        poseCovarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.pose.covariance)
        poseCovariance = Covariance(poseCovarianceMatrix)
        twistCovarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.twist.covariance)
@@ -71,12 +71,12 @@ class CntrlPx4:
 
     def convert_ros_covariance_to_px4_covariance(self,rosCov):
        px4Cov = [0]*21
-       px4Cov[0:6] = rosCov[0:6]
-       px4Cov[6:11] = rosCov[7:12]
-       px4Cov[11:15] = rosCov[14:18]
-       px4Cov[15:18] = rosCov[21:24]
-       px4Cov[18:20] = rosCov[28:30]
-       px4Cov[20] = rosCov[35]
+    #    px4Cov[0:6] = rosCov[0:6]
+    #    px4Cov[6:11] = rosCov[7:12]
+    #    px4Cov[11:15] = rosCov[14:18]
+    #    px4Cov[15:18] = rosCov[21:24]
+    #    px4Cov[18:20] = rosCov[28:30]
+    #    px4Cov[20] = rosCov[35]
        return px4Cov
 
     def publish_estimate(self,odom):
@@ -175,15 +175,15 @@ class CntrlPx4:
         async for odom in drone.telemetry.odometry():
             self.publish_estimate(odom)
             if self.poseUpdate.time_usec != self.prevOdomUpdateTime and self.meas1_received:
-                print('odom: ')
-                print('time = ', self.odomUpdate.time_usec)
-                print('frame id = ', self.odomUpdate.frame_id)
-                print('position = ', self.odomUpdate.position_body.x_m,self.odomUpdate.position_body.y_m,self.odomUpdate.position_body.z_m)
-                print('q = ', self.odomUpdate.q.x,self.odomUpdate.q.y,self.odomUpdate.q.z,self.odomUpdate.q.w)
-                print('speed = ', self.odomUpdate.speed_body.x_m_s, self.odomUpdate.speed_body.y_m_s, self.odomUpdate.speed_body.z_m_s)
-                print('angular velocity = ', self.odomUpdate.angular_velocity_body.roll_rad_s,self.odomUpdate.angular_velocity_body.pitch_rad_s,self.odomUpdate.angular_velocity_body.yaw_rad_s)
-                print('pose covariance = ', self.odomUpdate.pose_covariance.covariance_matrix)
-                print('velocity covariance = ', self.odomUpdate.velocity_covariance.covariance_matrix)
+                # print('odom: ')
+                # print('time = ', self.odomUpdate.time_usec)
+                # print('frame id = ', self.odomUpdate.frame_id)
+                # print('position = ', self.odomUpdate.position_body.x_m,self.odomUpdate.position_body.y_m,self.odomUpdate.position_body.z_m)
+                # print('q = ', self.odomUpdate.q.x,self.odomUpdate.q.y,self.odomUpdate.q.z,self.odomUpdate.q.w)
+                # print('speed = ', self.odomUpdate.speed_body.x_m_s, self.odomUpdate.speed_body.y_m_s, self.odomUpdate.speed_body.z_m_s)
+                # print('angular velocity = ', self.odomUpdate.angular_velocity_body.roll_rad_s,self.odomUpdate.angular_velocity_body.pitch_rad_s,self.odomUpdate.angular_velocity_body.yaw_rad_s)
+                # print('pose covariance = ', self.odomUpdate.pose_covariance.covariance_matrix)
+                # print('velocity covariance = ', self.odomUpdate.velocity_covariance.covariance_matrix)
                 await drone.mocap.set_odometry(self.odomUpdate)
                 # await drone.mocap.set_vision_position_estimate(self.poseUpdate)
                 self.prevOdomUpdateTime = self.poseUpdate.time_usec

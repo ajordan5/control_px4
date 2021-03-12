@@ -1,6 +1,6 @@
 px4_2ublox: {
 
-ublox_frequency: 5.0, #hz
+ublox_frequency: 35.0, #hz
 
 #Should they be less by a factor of 10?
 global_horizontal_accuracy: 0.4, #standard deviations
