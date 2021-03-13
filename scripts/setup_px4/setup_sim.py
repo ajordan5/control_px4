@@ -19,7 +19,7 @@ async def run():
     aidMask = await drone.param.get_param_int('EKF2_AID_MASK')
     print('EKF2_AID_MASK = ', aidMask)
     print('setting aid mask parameter')
-    await drone.param.set_param_int('EKF2_AID_MASK',264)
+    await drone.param.set_param_int('EKF2_AID_MASK',72)
     aidMask = await drone.param.get_param_int('EKF2_AID_MASK')
     print('EKF2_AID_MASK = ', aidMask)
 
