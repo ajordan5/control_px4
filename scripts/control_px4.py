@@ -31,12 +31,13 @@ class CntrlPx4:
         self.health = 0
         self.landed = 0
         self.rc_status = 0
+        self.gps_info = 0
         self.systemAddress = rospy.get_param('~systemAddress', "serial:///dev/ttyUSB0:921600")
 
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
         self.switch_integrators_pub_ = rospy.Publisher('switch_integrators',Bool,queue_size=5,latch=True)
         self.commands_sub_ = rospy.Subscriber('commands', Odometry, self.commandsCallback, queue_size=5)
-        self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
+        # self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
         
         #rospy.spin()
     
@@ -48,25 +49,25 @@ class CntrlPx4:
         self.feedForwardVelocity.east_m_s = msg.twist.twist.linear.y
         self.feedForwardVelocity.down_m_s = msg.twist.twist.linear.z
 
-    def positionMeasurementCallback(self,msg):
-       time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
-       time = int(round(time,6)*1E6)
-       angleBody = AngleBody(0.0,0.0,0.0) #Currently no angle information is given
-       positionBody = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
-       covarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.pose.covariance)
-       poseCovariance = Covariance(covarianceMatrix)
-       self.pose = VisionPositionEstimate(time,positionBody,angleBody,poseCovariance)
-       self.meas1_received = True
+    # def positionMeasurementCallback(self,msg):
+    #    time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
+    #    time = int(round(time,6)*1E6)
+    #    angleBody = AngleBody(0.0,0.0,0.0) #Currently no angle information is given
+    #    positionBody = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
+    #    covarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.pose.covariance)
+    #    poseCovariance = Covariance(covarianceMatrix)
+    #    self.pose = VisionPositionEstimate(time,positionBody,angleBody,poseCovariance)
+    #    self.meas1_received = True
 
-    def convert_ros_covariance_to_px4_covariance(self,rosCov):
-       px4Cov = [0]*21
-       px4Cov[0:6] = rosCov[0:6]
-       px4Cov[6:11] = rosCov[7:12]
-       px4Cov[11:15] = rosCov[14:18]
-       px4Cov[15:18] = rosCov[21:24]
-       px4Cov[18:20] = rosCov[28:30]
-       px4Cov[20] = rosCov[35]
-       return px4Cov
+    # def convert_ros_covariance_to_px4_covariance(self,rosCov):
+    #    px4Cov = [0]*21
+    #    px4Cov[0:6] = rosCov[0:6]
+    #    px4Cov[6:11] = rosCov[7:12]
+    #    px4Cov[11:15] = rosCov[14:18]
+    #    px4Cov[15:18] = rosCov[21:24]
+    #    px4Cov[18:20] = rosCov[28:30]
+    #    px4Cov[20] = rosCov[35]
+    #    return px4Cov
 
     def publish_estimate(self,odom):
        time = odom.time_usec*1E-6
@@ -103,10 +104,10 @@ class CntrlPx4:
        rosCov[35] = px4Cov[20]
        return rosCov
 
-    def switch_integrators(self,onOffFlag):
-       flag = Bool()
-       flag.data = onOffFlag
-       self.switch_integrators_pub_.publish(flag)
+    # def switch_integrators(self,onOffFlag):
+    #    flag = Bool()
+    #    flag.data = onOffFlag
+    #    self.switch_integrators_pub_.publish(flag)
 
     async def run(self):
         drone = System()
@@ -137,6 +138,7 @@ class CntrlPx4:
         asyncio.ensure_future(self.print_health(drone))
         asyncio.ensure_future(self.print_landed_state(drone))
         asyncio.ensure_future(self.print_rc_status(drone))
+        asyncio.ensure_future(self.print_gps_info(drone))
 
         if self.sim == True:
             await drone.action.arm()
@@ -151,19 +153,19 @@ class CntrlPx4:
             if self.flightMode != flight_mode:
                 print("FlightMode:", flight_mode)
                 self.flightMode = flight_mode
-                if flight_mode == FlightMode(7):
-                    self.switch_integrators(True)
-                    self.offBoardOn = True
-                else:
-                    self.switch_integrators(False)
-                    self.offBoardOn = False
+                # if flight_mode == FlightMode(7):
+                #     self.switch_integrators(True)
+                #     self.offBoardOn = True
+                # else:
+                #     self.switch_integrators(False)
+                #     self.offBoardOn = False
 
     async def input_meas_output_est(self,drone):
         async for odom in drone.telemetry.odometry():
             self.publish_estimate(odom)
-            if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
-                await drone.mocap.set_vision_position_estimate(self.pose)
-                self.prevPoseTime = self.pose.time_usec
+            # if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
+            #     await drone.mocap.set_vision_position_estimate(self.pose)
+            #     self.prevPoseTime = self.pose.time_usec
             await drone.offboard.set_position_velocity_ned(self.positionCommands,self.feedForwardVelocity)
 
     async def print_status(self,drone):
@@ -211,6 +213,12 @@ class CntrlPx4:
             if rc_status != self.rc_status:
                 print(f"rc status: {rc_status}")
                 self.rc_status = rc_status
+
+    async def print_gps_info(self,drone):
+        async for gps_info in drone.telemetry.gps_info():
+            if gps_info != self.gps_info:
+                print(f": {gps_info}")
+                self.gps_info = gps_info
 
 if __name__ == "__main__":
     rospy.init_node('control_px4', anonymous=True)
