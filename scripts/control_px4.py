@@ -24,14 +24,8 @@ class CntrlPx4:
         self.flightMode = 'none'
         self.offBoardOn = False
         self.sim = rospy.get_param('~sim', False)
-        self.battery = 0
         self.in_air = 0
         self.arm_status = 0
-        self.euler = 0
-        self.health = 0
-        self.landed = 0
-        self.rc_status = 0
-        self.gps_info = 0
         self.systemAddress = rospy.get_param('~systemAddress', "serial:///dev/ttyUSB0:921600")
 
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
@@ -128,6 +122,7 @@ class CntrlPx4:
         await drone.telemetry.set_rate_in_air(1)
         await drone.telemetry.set_rate_landed_state(1)
         await drone.telemetry.set_rate_rc_status(0.1)
+        await drone.telemetry.set_rate_gps_info(0.1)
         asyncio.ensure_future(self.flight_modes(drone))
         asyncio.ensure_future(self.input_meas_output_est(drone))
         asyncio.ensure_future(self.print_status(drone))
@@ -174,9 +169,7 @@ class CntrlPx4:
 
     async def print_battery(self,drone):
         async for battery in drone.telemetry.battery():
-            if battery != self.battery:
-                print(f"Battery: {battery}")
-                self.battery = battery
+            print(f"Battery: {battery}")
 
     async def print_in_air(self,drone):
         async for in_air in drone.telemetry.in_air():
@@ -192,33 +185,23 @@ class CntrlPx4:
 
     async def print_euler(self,drone):
         async for euler in drone.telemetry.attitude_euler():
-            if euler != self.euler:
-                print(f"euler: {euler}")
-                self.euler = euler
+            print(f"euler: {euler}")
 
     async def print_health(self,drone):
         async for health in drone.telemetry.health_all_okay():
-            if health != self.health:
-                print(f"health all okay: {health}")
-                self.health = health
+            print(f"health all okay: {health}")
 
     async def print_landed_state(self,drone):
         async for landed in drone.telemetry.landed_state():
-            if landed != self.landed:
-                print(f"landed: {landed}")
-                self.landed = landed
+            self.landed = landed
 
     async def print_rc_status(self,drone):
         async for rc_status in drone.telemetry.rc_status():
-            if rc_status != self.rc_status:
-                print(f"rc status: {rc_status}")
-                self.rc_status = rc_status
+            print(f"rc status: {rc_status}")
 
     async def print_gps_info(self,drone):
         async for gps_info in drone.telemetry.gps_info():
-            if gps_info != self.gps_info:
-                print(f": {gps_info}")
-                self.gps_info = gps_info
+            print(f": {gps_info}")
 
 if __name__ == "__main__":
     rospy.init_node('control_px4', anonymous=True)
