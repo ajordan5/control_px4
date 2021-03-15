@@ -29,7 +29,7 @@ class CntrlPx4:
         self.systemAddress = rospy.get_param('~systemAddress', "serial:///dev/ttyUSB0:921600")
 
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
-        self.switch_integrators_pub_ = rospy.Publisher('switch_integrators',Bool,queue_size=5,latch=True)
+        # self.switch_integrators_pub_ = rospy.Publisher('switch_integrators',Bool,queue_size=5,latch=True)
         self.commands_sub_ = rospy.Subscriber('commands', Odometry, self.commandsCallback, queue_size=5)
         # self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
         
@@ -117,23 +117,23 @@ class CntrlPx4:
 
         #TODO publish all of these messages, so that rosbags contain this information
         await drone.telemetry.set_rate_odometry(100)
-        # await drone.telemetry.set_rate_attitude(1) #doesn't seem to affect euler?
-        await drone.telemetry.set_rate_battery(0.1)
-        await drone.telemetry.set_rate_in_air(1)
-        await drone.telemetry.set_rate_landed_state(1)
-        await drone.telemetry.set_rate_rc_status(0.1)
-        await drone.telemetry.set_rate_gps_info(0.1)
-        asyncio.ensure_future(self.flight_modes(drone))
         asyncio.ensure_future(self.input_meas_output_est(drone))
-        asyncio.ensure_future(self.print_status(drone))
-        asyncio.ensure_future(self.print_battery(drone))
-        asyncio.ensure_future(self.print_in_air(drone))
-        asyncio.ensure_future(self.print_armed(drone))
-        # asyncio.ensure_future(self.print_euler(drone))
-        asyncio.ensure_future(self.print_health(drone))
-        asyncio.ensure_future(self.print_landed_state(drone))
-        asyncio.ensure_future(self.print_rc_status(drone))
-        asyncio.ensure_future(self.print_gps_info(drone))
+        # asyncio.ensure_future(self.flight_modes(drone))
+        # await drone.telemetry.set_rate_attitude(1) #doesn't seem to affect euler?
+        # # asyncio.ensure_future(self.print_euler(drone))
+        # await drone.telemetry.set_rate_battery(0.1)
+        # asyncio.ensure_future(self.print_battery(drone))
+        # await drone.telemetry.set_rate_in_air(1)
+        # asyncio.ensure_future(self.print_in_air(drone))
+        # await drone.telemetry.set_rate_landed_state(1)
+        # asyncio.ensure_future(self.print_landed_state(drone))
+        # await drone.telemetry.set_rate_rc_status(0.1)
+        # asyncio.ensure_future(self.print_landed_state(drone))
+        # await drone.telemetry.set_rate_gps_info(0.1)
+        # asyncio.ensure_future(self.print_gps_info(drone))
+        # asyncio.ensure_future(self.print_status(drone))
+        # asyncio.ensure_future(self.print_armed(drone))
+        # asyncio.ensure_future(self.print_health(drone))
 
         if self.sim == True:
             await drone.action.arm()
