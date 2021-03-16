@@ -36,6 +36,8 @@ class StateMachine:
         self.RBase = R.from_rotvec(np.pi/180.0*np.array([0.0,0.0,0.0])) 
         self.currentWaypointIndex = 0
         self.feedForwardVelocity = [0.0,0.0,0.0]
+        self.baseRoll = 0.0
+        self.basePitch = 0.0
 
         self.hlcMsg = PoseStamped()
         self.beginLandingRoutineMsg = Bool()
@@ -45,6 +47,7 @@ class StateMachine:
         self.odom_sub_ = rospy.Subscriber('odom',Odometry,self.odomCallback, queue_size=5)
         self.base_heading_sub_ = rospy.Subscriber('base_heading',Vector3,self.baseHeadingCallback, queue_size=5)
         self.base_velocity_sub_ = rospy.Subscriber('base_velocity',Vector3,self.baseVelocityCallback, queue_size=5)
+        self.base_odom_sub_ = rospy.Subscriber('base_odom',Odometry,self.baseOdomCallback, queue_size=5)
 
         while not rospy.is_shutdown():
             rospy.spin()
@@ -63,6 +66,14 @@ class StateMachine:
         self.feedForwardVelocity[0] = msg.x
         self.feedForwardVelocity[1] = msg.y
         self.feedForwardVelocity[2] = msg.z
+
+    def baseOdomCallback(self,msg):
+        orientBaseR = R.from_quat([msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,msg.pose.pose.orientation.z])
+        orientBaseEuler = orientBaseR.as_euler()
+        self.baseRoll = orientBaseEuler[0]
+        self.basePitch = orientBaseEuler[1]
+        print('base roll = ', self.baseRoll)
+        print('base pitch = ', self.basePitch)
 
     def update_hlc(self):
         if self.missionState == 1:
