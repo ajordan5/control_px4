@@ -7,11 +7,13 @@ from geometry_msgs.msg import PoseStamped
 class Px4_2Ublox(Pose2Ublox_Ros):
     def __init__(self):
         super().__init__()
+        self.antennaOffset = rospy.get_param('~antennaOffset', [0.0,0.0,0.0]) #make sure this is the same as in state_machine.yaml
+
         self.receivedRoverPose = False
         self.receivedBasePose = False
         # Subscribers
-        self.rover_mocap_ned_sub_ = rospy.Subscriber('/rover_pose', PoseStamped, self.roverNedCallback, queue_size=5)
-        self.base_mocap_ned_sub_ = rospy.Subscriber('/base_pose', PoseStamped, self.baseNedCallback, queue_size=5)
+        self.rover_sim_ned_sub_ = rospy.Subscriber('/rover_pose', PoseStamped, self.roverNedCallback, queue_size=5)
+        self.base_sim_ned_sub_ = rospy.Subscriber('/base_pose', PoseStamped, self.baseNedCallback, queue_size=5)
 
         while not rospy.is_shutdown():
             # wait for new messages and call the callback when they arrive
@@ -29,7 +31,7 @@ class Px4_2Ublox(Pose2Ublox_Ros):
     def baseNedCallback(self, msg):
         self.p2u.base_ned = np.array([msg.pose.position.x,
                                    msg.pose.position.y,
-                                   msg.pose.position.z])
+                                   msg.pose.position.z]) - np.array(self.antennaOffset)
 
         self.p2u.compass_quat = np.array([msg.pose.orientation.w,
                                         msg.pose.orientation.x,

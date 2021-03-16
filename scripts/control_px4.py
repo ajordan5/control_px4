@@ -2,7 +2,7 @@
 
 import asyncio
 from mavsdk import System
-from mavsdk.offboard import (OffboardError, VelocityNedYaw)
+from mavsdk.offboard import (OffboardError, PositionNedYaw, VelocityNedYaw)
 from mavsdk.mocap import (AttitudePositionMocap,VisionPositionEstimate,Quaternion,PositionBody,AngleBody,Covariance)
 from mavsdk.telemetry import FlightMode
 import navpy
@@ -16,51 +16,52 @@ from std_msgs.msg import Bool
 
 class CntrlPx4:
     def __init__(self):
-        self.velCmd = [0.0,0.0,0.0]
+        self.positionCommands = PositionNedYaw(0.0,0.0,0.0,0.0)
+        self.feedForwardVelocity = VelocityNedYaw(0.0,0.0,0.0,0.0)
         self.prevPoseTime = 0.0
         self.estimateMsg = Odometry()
         self.meas1_received = False
         self.flightMode = 'none'
         self.offBoardOn = False
         self.sim = rospy.get_param('~sim', False)
-        self.battery = 0
         self.in_air = 0
         self.arm_status = 0
-        self.euler = 0
-        self.health = 0
-        self.landed = 0
-        self.rc_status = 0
         self.systemAddress = rospy.get_param('~systemAddress', "serial:///dev/ttyUSB0:921600")
 
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
-        self.switch_integrators_pub_ = rospy.Publisher('switch_integrators',Bool,queue_size=5,latch=True)
-        self.vel_cmd_sub_ = rospy.Subscriber('velCmd', Point, self.velCmdCallback, queue_size=5)
-        self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
+        # self.switch_integrators_pub_ = rospy.Publisher('switch_integrators',Bool,queue_size=5,latch=True)
+        self.commands_sub_ = rospy.Subscriber('commands', Odometry, self.commandsCallback, queue_size=5)
+        # self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
         
         #rospy.spin()
     
-    def velCmdCallback(self,msg):
-       self.velCmd = [msg.x,msg.y,msg.z]
+    def commandsCallback(self,msg):
+        self.positionCommands.north_m = msg.pose.pose.position.x
+        self.positionCommands.east_m = msg.pose.pose.position.y
+        self.positionCommands.down_m = msg.pose.pose.position.z
+        self.feedForwardVelocity.north_m_s = msg.twist.twist.linear.x
+        self.feedForwardVelocity.east_m_s = msg.twist.twist.linear.y
+        self.feedForwardVelocity.down_m_s = msg.twist.twist.linear.z
 
-    def positionMeasurementCallback(self,msg):
-       time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
-       time = int(round(time,6)*1E6)
-       angleBody = AngleBody(0.0,0.0,0.0) #Currently no angle information is given
-       positionBody = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
-       covarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.pose.covariance)
-       poseCovariance = Covariance(covarianceMatrix)
-       self.pose = VisionPositionEstimate(time,positionBody,angleBody,poseCovariance)
-       self.meas1_received = True
+    # def positionMeasurementCallback(self,msg):
+    #    time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
+    #    time = int(round(time,6)*1E6)
+    #    angleBody = AngleBody(0.0,0.0,0.0) #Currently no angle information is given
+    #    positionBody = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
+    #    covarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.pose.covariance)
+    #    poseCovariance = Covariance(covarianceMatrix)
+    #    self.pose = VisionPositionEstimate(time,positionBody,angleBody,poseCovariance)
+    #    self.meas1_received = True
 
-    def convert_ros_covariance_to_px4_covariance(self,rosCov):
-       px4Cov = [0]*21
-       px4Cov[0:6] = rosCov[0:6]
-       px4Cov[6:11] = rosCov[7:12]
-       px4Cov[11:15] = rosCov[14:18]
-       px4Cov[15:18] = rosCov[21:24]
-       px4Cov[18:20] = rosCov[28:30]
-       px4Cov[20] = rosCov[35]
-       return px4Cov
+    # def convert_ros_covariance_to_px4_covariance(self,rosCov):
+    #    px4Cov = [0]*21
+    #    px4Cov[0:6] = rosCov[0:6]
+    #    px4Cov[6:11] = rosCov[7:12]
+    #    px4Cov[11:15] = rosCov[14:18]
+    #    px4Cov[15:18] = rosCov[21:24]
+    #    px4Cov[18:20] = rosCov[28:30]
+    #    px4Cov[20] = rosCov[35]
+    #    return px4Cov
 
     def publish_estimate(self,odom):
        time = odom.time_usec*1E-6
@@ -97,10 +98,10 @@ class CntrlPx4:
        rosCov[35] = px4Cov[20]
        return rosCov
 
-    def switch_integrators(self,onOffFlag):
-       flag = Bool()
-       flag.data = onOffFlag
-       self.switch_integrators_pub_.publish(flag)
+    # def switch_integrators(self,onOffFlag):
+    #    flag = Bool()
+    #    flag.data = onOffFlag
+    #    self.switch_integrators_pub_.publish(flag)
 
     async def run(self):
         drone = System()
@@ -116,51 +117,51 @@ class CntrlPx4:
 
         #TODO publish all of these messages, so that rosbags contain this information
         await drone.telemetry.set_rate_odometry(100)
-        # await drone.telemetry.set_rate_attitude(1) #doesn't seem to affect euler?
-        await drone.telemetry.set_rate_battery(0.1)
-        await drone.telemetry.set_rate_in_air(1)
-        await drone.telemetry.set_rate_landed_state(1)
-        await drone.telemetry.set_rate_rc_status(0.1)
-        asyncio.ensure_future(self.flight_modes(drone))
         asyncio.ensure_future(self.input_meas_output_est(drone))
-        asyncio.ensure_future(self.print_status(drone))
+        asyncio.ensure_future(self.flight_modes(drone))
+        # await drone.telemetry.set_rate_attitude(1) #doesn't seem to affect euler?
+        # # asyncio.ensure_future(self.print_euler(drone))
+        await drone.telemetry.set_rate_battery(0.1)
         asyncio.ensure_future(self.print_battery(drone))
+        await drone.telemetry.set_rate_in_air(1)
         asyncio.ensure_future(self.print_in_air(drone))
-        asyncio.ensure_future(self.print_armed(drone))
-        # asyncio.ensure_future(self.print_euler(drone))
-        asyncio.ensure_future(self.print_health(drone))
+        await drone.telemetry.set_rate_landed_state(1)
         asyncio.ensure_future(self.print_landed_state(drone))
-        asyncio.ensure_future(self.print_rc_status(drone))
+        await drone.telemetry.set_rate_rc_status(0.1)
+        asyncio.ensure_future(self.print_landed_state(drone))
+        # await drone.telemetry.set_rate_gps_info(0.1)  #This message slows down estimate by 99 hz.
+        # asyncio.ensure_future(self.print_gps_info(drone))
+        asyncio.ensure_future(self.print_status(drone))
+        asyncio.ensure_future(self.print_armed(drone))
+        asyncio.ensure_future(self.print_health(drone))
 
         if self.sim == True:
-          await drone.action.arm()
-          await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
-          await drone.offboard.start()
-          print("Simulation starting offboard.")
+            await drone.action.arm()
+            await drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
+            await drone.offboard.start()
+            print("Simulation starting offboard.")
+
         print('end of run')
         
     async def flight_modes(self,drone):
-        counter = 1
         async for flight_mode in drone.telemetry.flight_mode():
-            print('checking_flight_mode',counter)
-            counter = counter+1
             if self.flightMode != flight_mode:
                 print("FlightMode:", flight_mode)
                 self.flightMode = flight_mode
-                if flight_mode == FlightMode(7):
-                    self.switch_integrators(True)
-                    self.offBoardOn = True
-                else:
-                    self.switch_integrators(False)
-                    self.offBoardOn = False
+                # if flight_mode == FlightMode(7):
+                #     self.switch_integrators(True)
+                #     self.offBoardOn = True
+                # else:
+                #     self.switch_integrators(False)
+                #     self.offBoardOn = False
 
     async def input_meas_output_est(self,drone):
         async for odom in drone.telemetry.odometry():
             self.publish_estimate(odom)
-            if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
-                await drone.mocap.set_vision_position_estimate(self.pose)
-                self.prevPoseTime = self.pose.time_usec
-            await drone.offboard.set_velocity_ned(VelocityNedYaw(self.velCmd[0],self.velCmd[1],self.velCmd[2],0.0))
+            # if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
+            #     await drone.mocap.set_vision_position_estimate(self.pose)
+            #     self.prevPoseTime = self.pose.time_usec
+            await drone.offboard.set_position_velocity_ned(self.positionCommands,self.feedForwardVelocity)
 
     async def print_status(self,drone):
         async for status in drone.telemetry.status_text():
@@ -168,9 +169,7 @@ class CntrlPx4:
 
     async def print_battery(self,drone):
         async for battery in drone.telemetry.battery():
-            if battery != self.battery:
-                print(f"Battery: {battery}")
-                self.battery = battery
+            print(f"Battery: {battery}")
 
     async def print_in_air(self,drone):
         async for in_air in drone.telemetry.in_air():
@@ -186,27 +185,23 @@ class CntrlPx4:
 
     async def print_euler(self,drone):
         async for euler in drone.telemetry.attitude_euler():
-            if euler != self.euler:
-                print(f"euler: {euler}")
-                self.euler = euler
+            print(f"euler: {euler}")
 
     async def print_health(self,drone):
         async for health in drone.telemetry.health_all_okay():
-            if heath != self.health:
-                print(f"health all okay: {health}")
-                self.health = health
+            print(f"health all okay: {health}")
 
     async def print_landed_state(self,drone):
         async for landed in drone.telemetry.landed_state():
-            if landed != self.landed:
-                print(f"landed: {landed}")
-                self.landed = landed
+            self.landed = landed
 
     async def print_rc_status(self,drone):
         async for rc_status in drone.telemetry.rc_status():
-            if rc_status != self.rc_status:
-                print(f"rc status: {rc_status}")
-                self.rc_status = rc_status
+            print(f"rc status: {rc_status}")
+
+    async def print_gps_info(self,drone):
+        async for gps_info in drone.telemetry.gps_info():
+            print(f": {gps_info}")
 
 if __name__ == "__main__":
     rospy.init_node('control_px4', anonymous=True)

@@ -7,6 +7,7 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import Vector3
 from nav_msgs.msg import Odometry
 from ublox.msg import RelPos
+from ublox.msg import PosVelEcef
 from std_msgs.msg import Bool
 from scipy.spatial.transform import Rotation as R
 
@@ -18,7 +19,7 @@ class StateMachine:
                               #2 - descend
                               #3 - land
         self.waypoints = rospy.get_param('~waypoints', [[0.0,0.0,-2.0]])
-        self.hlc = self.waypoints
+        self.hlc = Odometry()
         self.antennaOffset = rospy.get_param('~antennaOffset', [0.0,0.0,0.0])
 
         self.missionThreshold = rospy.get_param('~missionThreshold', 0.3)
@@ -34,14 +35,16 @@ class StateMachine:
         self.rover2BaseRelPos = [0.0,0.0,0.0]
         self.RBase = R.from_rotvec(np.pi/180.0*np.array([0.0,0.0,0.0])) 
         self.currentWaypointIndex = 0
+        self.feedForwardVelocity = [0.0,0.0,0.0]
 
         self.hlcMsg = PoseStamped()
         self.beginLandingRoutineMsg = Bool()
-        self.hlc_pub_ = rospy.Publisher('hlc',PoseStamped,queue_size=5,latch=True)
+        self.hlc_pub_ = rospy.Publisher('hlc',Odometry,queue_size=5,latch=True)
         self.begin_landing_routine_pub_ = rospy.Publisher('begin_landing_routine',Bool,queue_size=5,latch=True)
         self.rover2BaseRelPos_sub_ = rospy.Subscriber('rover2BaseRelPos', Point, self.rover2BaseRelPosCallback, queue_size=5)
         self.odom_sub_ = rospy.Subscriber('odom',Odometry,self.odomCallback, queue_size=5)
-        self.base_heading_sub = rospy.Subscriber('base_heading',Vector3,self.baseHeadingCallback, queue_size=5)
+        self.base_heading_sub_ = rospy.Subscriber('base_heading',Vector3,self.baseHeadingCallback, queue_size=5)
+        self.base_velocity_sub_ = rospy.Subscriber('base_velocity',Vector3,self.baseVelocityCallback, queue_size=5)
 
         while not rospy.is_shutdown():
             rospy.spin()
@@ -56,22 +59,27 @@ class StateMachine:
     def baseHeadingCallback(self,msg):
         self.RBase = R.from_rotvec(np.array([0.0,0.0,msg.z])) #could add other orientations if needed.
 
+    def baseVelocityCallback(self,msg):
+        self.feedForwardVelocity[0] = msg.x
+        self.feedForwardVelocity[1] = msg.y
+        self.feedForwardVelocity[2] = msg.z
+
     def update_hlc(self):
         if self.missionState == 1:
-            self.rendevous()
+            commands = self.rendevous()
         elif self.missionState == 2:
-            self.descend()
+            commands = self.descend()
         elif self.missionState == 3:
-            self.land()
+            commands = self.land()
         else:
-            self.rendevous()
-            #self.fly_mission()
+            commands = self.rendevous()
+            #commands = self.fly_mission()
+
+        self.publish_hlc(commands)
 
     def fly_mission(self):
         currentWaypoint = self.waypoints[self.currentWaypointIndex]
-        self.hlc = currentWaypoint
-        self.publish_hlc()
-        error = np.linalg.norm(np.array(self.hlc)-np.array(self.odom))
+        error = np.linalg.norm(np.array(currentWaypoint)-np.array(self.odom))
         if error < self.missionThreshold:
             print('reached waypoint ', self.currentWaypointIndex + 1)
             self.currentWaypointIndex += 1
@@ -80,39 +88,42 @@ class StateMachine:
                 print('rendevous state')
                 self.beginLandingRoutineMsg.data = True
                 self.begin_landing_routine_pub_.publish(self.beginLandingRoutineMsg)
-                return
             if self.cyclicalPath:
                 self.currentWaypointIndex %= len(self.waypoints)            
             elif self.currentWaypointIndex == len(self.waypoints):
                 self.currentWaypointIndex -=1
-                
+        return [currentWaypoint,[0.0,0.0,0.0]]
+
     def rendevous(self):
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + self.RBase.apply(np.array(self.antennaOffset))
-        self.hlc = error + np.array(self.odom)
-        self.publish_hlc()
+        currentWaypoint = error + np.array(self.odom)
         if np.linalg.norm(error) < self.rendevousThreshold:
             self.missionState = 2
             print('descend state')
+        return [currentWaypoint,self.feedForwardVelocity]
 
     def descend(self):
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.landingHeight]) + self.RBase.apply(np.array(self.antennaOffset))
-        self.hlc = error + np.array(self.odom)
-        self.publish_hlc()
+        currentWaypoint = error + np.array(self.odom)
         if np.linalg.norm(error) < self.landingThreshold:
             self.missionState = 3
             print('land state')
+        return [currentWaypoint,self.feedForwardVelocity]
 
     def land(self):
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,5.0]) + self.RBase.apply(np.array(self.antennaOffset))
-        self.hlc = error + np.array(self.odom) #multirotor attemptes to drive itself into the platform 5 meters deep.
-        self.publish_hlc()
+        currentWaypoint = error + np.array(self.odom) #multirotor attemptes to drive itself into the platform 5 meters deep.
+        return [currentWaypoint,self.feedForwardVelocity]
 
-    def publish_hlc(self):
-        self.hlcMsg.pose.position.x = self.hlc[0]
-        self.hlcMsg.pose.position.y = self.hlc[1]
-        self.hlcMsg.pose.position.z = self.hlc[2]
-        self.hlcMsg.header.stamp = rospy.Time.now()
-        self.hlc_pub_.publish(self.hlcMsg)
+    def publish_hlc(self,commands):
+        self.hlc.pose.pose.position.x = commands[0][0]
+        self.hlc.pose.pose.position.y = commands[0][1]
+        self.hlc.pose.pose.position.z = commands[0][2]
+        self.hlc.twist.twist.linear.x = commands[1][0]
+        self.hlc.twist.twist.linear.y = commands[1][1]
+        self.hlc.twist.twist.linear.z = commands[1][2]
+        self.hlc.header.stamp = rospy.Time.now()
+        self.hlc_pub_.publish(self.hlc)
 
 if __name__ == "__main__":
     rospy.init_node('state_machine', anonymous=True)
