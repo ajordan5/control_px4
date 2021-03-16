@@ -72,8 +72,8 @@ class StateMachine:
         elif self.missionState == 3:
             commands = self.land()
         else:
-            #commands = self.rendevous()
-            commands = self.fly_mission()
+            commands = self.rendevous()
+            #commands = self.fly_mission()
 
         self.publish_hlc(commands)
 
