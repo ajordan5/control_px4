@@ -7,8 +7,8 @@ state_machine: {
   missionThreshold: 0.3,
   rendevousThreshold: 0.1,
   rendevousHeight: -3.0,
-  landingThreshold: 0.05,
   landingHeight: -0.2,
+  landingThreshold: 0.1,
   autoLand: True,
   cyclicalPath: False,
 }
