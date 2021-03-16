@@ -8,14 +8,6 @@
         <remap from="base_heading" to="/base_heading"/>
         <remap from="base_velocity" to="/base_velocity"/>
     </node>
-    <!-- <rosparam command="load" file="$(find control_px4)/params/controller.yaml"/> -->
-    <!-- <node name="velocity_controller" pkg="control_px4" type="vel_controller.py" output="screen">
-        <remap from="odom" to="/estimate"/>
-        <remap from="hlc" to="/hlc"/>
-        <remap from="base_vel" to="base_velocity"/>
-	<remap from="begin_landing_routine" to="/begin_landing_routine"/>
-	<remap from="switch_integrators" to="/switch_integrators"/>
-    </node> -->
     <rosparam command="load" file="$(find control_px4)/params/control_px4.yaml"/>
     <node name="control_px4" pkg="control_px4" type="control_px4.py" output="screen">
         <remap from="commands" to="/hlc"/>

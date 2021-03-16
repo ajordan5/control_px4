@@ -17,7 +17,7 @@
     </include>
 
     <node name="nav" pkg="control_px4" type="nav.py" output="screen">
-	    <remap from="base2Rover_relPos" to="/rover/RelPos"/> <!--$(arg base2rover_relPos)"/-->
+	    <remap from="base2Rover_relPos" to="/rover/RelPos"/>
         <remap from="posVelEcef" to="$(arg posVelEcef)"/>
         <remap from="base_posVelEcef" to="$(arg base_posVelEcef)"/>
         <remap from="compass_relPos" to="$(arg compass_relPos)"/>

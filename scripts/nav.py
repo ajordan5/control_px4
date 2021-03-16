@@ -37,7 +37,6 @@ class Nav:
         self.base_posVelEcef_sub_ = rospy.Subscriber('base_posVelEcef', PosVelEcef, self.basePosVelEcefCallback, queue_size=5)
         self.compass_relPos_sub_ = rospy.Subscriber('compass_relPos', RelPos, self.compassRelPosCallback, queue_size=5)
         self.rover_pose_4_heading_sub_ = rospy.Subscriber('rover_pose_4_heading', PoseStamped, self.roverPose4HeadingCallback, queue_size=5)
-        # self.px4_estimate_sub_ = rospy.Subscriber('/px4_estimate', PoseStamped, self.px4EstimateCallback, queue_size=5)
         while not rospy.is_shutdown():
             # wait for new messages and call the callback when they arrive
             rospy.spin()

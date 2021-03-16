@@ -29,12 +29,9 @@ class CntrlPx4:
         self.systemAddress = rospy.get_param('~systemAddress', "serial:///dev/ttyUSB0:921600")
 
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
-        # self.switch_integrators_pub_ = rospy.Publisher('switch_integrators',Bool,queue_size=5,latch=True)
         self.commands_sub_ = rospy.Subscriber('commands', Odometry, self.commandsCallback, queue_size=5)
         # self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
-        
-        #rospy.spin()
-    
+            
     def commandsCallback(self,msg):
         self.positionCommands.north_m = msg.pose.pose.position.x
         self.positionCommands.east_m = msg.pose.pose.position.y
@@ -98,11 +95,6 @@ class CntrlPx4:
        rosCov[35] = px4Cov[20]
        return rosCov
 
-    # def switch_integrators(self,onOffFlag):
-    #    flag = Bool()
-    #    flag.data = onOffFlag
-    #    self.switch_integrators_pub_.publish(flag)
-
     async def run(self):
         drone = System()
         print('system address = ', self.systemAddress)
@@ -148,13 +140,7 @@ class CntrlPx4:
             if self.flightMode != flight_mode:
                 print("FlightMode:", flight_mode)
                 self.flightMode = flight_mode
-                # if flight_mode == FlightMode(7):
-                #     self.switch_integrators(True)
-                #     self.offBoardOn = True
-                # else:
-                #     self.switch_integrators(False)
-                #     self.offBoardOn = False
-
+                
     async def input_meas_output_est(self,drone):
         async for odom in drone.telemetry.odometry():
             self.publish_estimate(odom)
