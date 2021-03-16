@@ -26,7 +26,10 @@ class CntrlPx4:
         self.sim = rospy.get_param('~sim', False)
         self.in_air = 0
         self.arm_status = 0
-        self.systemAddress = rospy.get_param('~systemAddress', "serial:///dev/ttyUSB0:921600")
+        if sim == True:
+            self.systemAddress = rospy.get_param('~simSystemAddress', "udp://:14540")
+        else:
+            self.systemAddress = rospy.get_param('~realSystemAddress', "serial:///dev/ttyUSB0:921600")          
 
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
         self.commands_sub_ = rospy.Subscriber('commands', Odometry, self.commandsCallback, queue_size=5)
@@ -140,7 +143,7 @@ class CntrlPx4:
             if self.flightMode != flight_mode:
                 print("FlightMode:", flight_mode)
                 self.flightMode = flight_mode
-                
+
     async def input_meas_output_est(self,drone):
         async for odom in drone.telemetry.odometry():
             self.publish_estimate(odom)
