@@ -26,6 +26,7 @@ class StateMachine:
         self.rendevousThreshold = rospy.get_param('~rendevousThreshold', 0.3)
         self.rendevousHeight = rospy.get_param('~rendevousHeight', -2.0)
         self.landingThreshold = rospy.get_param('~landingThreshold', 0.1)
+        self.baseXYAttitudeThreshold = rospy.get_param('~baseXYAttitudeThreshold',8.0)
         self.landingHeight = rospy.get_param('~landingHeight', -0.15)
         self.autoLand = rospy.get_param('~autoLand', False)
         self.cyclicalPath = rospy.get_param('~cyclicalPath', False)
@@ -36,9 +37,7 @@ class StateMachine:
         self.RBase = R.from_rotvec(np.pi/180.0*np.array([0.0,0.0,0.0])) 
         self.currentWaypointIndex = 0
         self.feedForwardVelocity = [0.0,0.0,0.0]
-        self.baseRoll = 0.0
-        self.basePitch = 0.0
-
+        self.baseXYAttitude = [0.0,0.0]
         self.hlcMsg = PoseStamped()
         self.beginLandingRoutineMsg = Bool()
         self.hlc_pub_ = rospy.Publisher('hlc',Odometry,queue_size=5,latch=True)
@@ -68,13 +67,10 @@ class StateMachine:
         self.feedForwardVelocity[2] = msg.z
 
     def baseOdomCallback(self,msg):
-        orientBaseR = R.from_quat([msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,msg.pose.pose.orientation.z])
-        orientBaseEuler = orientBaseR.as_euler()
-        self.baseRoll = orientBaseEuler[0]
-        self.basePitch = orientBaseEuler[1]
-        print('base roll = ', self.baseRoll)
-        print('base pitch = ', self.basePitch)
-
+        orientBaseR = R.from_quat([msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,msg.pose.pose.orientation.z,msg.pose.pose.orientation.w])
+        orientBaseEuler = orientBaseR.as_euler('xyz',degrees=True)
+        self.baseXYAttitude = [orientBaseEuler[0],orientBaseEuler[1]]
+    
     def update_hlc(self):
         if self.missionState == 1:
             commands = self.rendevous()
@@ -116,7 +112,7 @@ class StateMachine:
     def descend(self):
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.landingHeight]) + self.RBase.apply(np.array(self.antennaOffset))
         currentWaypoint = error + np.array(self.odom)
-        if np.linalg.norm(error) < self.landingThreshold:
+        if np.linalg.norm(error) < self.landingThreshold and np.linalg.norm(self.baseXYAttitude) < self.baseXYAttitudeThreshold:
             self.missionState = 3
             print('land state')
         return [currentWaypoint,self.feedForwardVelocity]
