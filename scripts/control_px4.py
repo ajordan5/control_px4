@@ -32,7 +32,7 @@ class CntrlPx4:
             self.systemAddress = rospy.get_param('~realSystemAddress', "serial:///dev/ttyUSB0:921600")          
         self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
         self.commands_sub_ = rospy.Subscriber('commands', Odometry, self.commandsCallback, queue_size=5)
-        self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
+        # self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
         
     def commandsCallback(self,msg):
         self.positionCommands.north_m = msg.pose.pose.position.x
@@ -42,25 +42,25 @@ class CntrlPx4:
         self.feedForwardVelocity.east_m_s = msg.twist.twist.linear.y
         self.feedForwardVelocity.down_m_s = msg.twist.twist.linear.z
 
-    def positionMeasurementCallback(self,msg):
-       time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
-       time = int(round(time,6)*1E6)
-       angleBody = AngleBody(0.0,0.0,0.0) #Currently no angle information is given
-       positionBody = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
-       covarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.pose.covariance)
-       poseCovariance = Covariance(covarianceMatrix)
-       self.pose = VisionPositionEstimate(time,positionBody,angleBody,poseCovariance)
-       self.meas1_received = True
+    # def positionMeasurementCallback(self,msg):
+    #    time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
+    #    time = int(round(time,6)*1E6)
+    #    angleBody = AngleBody(0.0,0.0,0.0) #Currently no angle information is given
+    #    positionBody = PositionBody(msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z)
+    #    covarianceMatrix = self.convert_ros_covariance_to_px4_covariance(msg.pose.covariance)
+    #    poseCovariance = Covariance(covarianceMatrix)
+    #    self.pose = VisionPositionEstimate(time,positionBody,angleBody,poseCovariance)
+    #    self.meas1_received = True
 
-    def convert_ros_covariance_to_px4_covariance(self,rosCov):
-       px4Cov = [0]*21
-       px4Cov[0:6] = rosCov[0:6]
-       px4Cov[6:11] = rosCov[7:12]
-       px4Cov[11:15] = rosCov[14:18]
-       px4Cov[15:18] = rosCov[21:24]
-       px4Cov[18:20] = rosCov[28:30]
-       px4Cov[20] = rosCov[35]
-       return px4Cov
+    # def convert_ros_covariance_to_px4_covariance(self,rosCov):
+    #    px4Cov = [0]*21
+    #    px4Cov[0:6] = rosCov[0:6]
+    #    px4Cov[6:11] = rosCov[7:12]
+    #    px4Cov[11:15] = rosCov[14:18]
+    #    px4Cov[15:18] = rosCov[21:24]
+    #    px4Cov[18:20] = rosCov[28:30]
+    #    px4Cov[20] = rosCov[35]
+    #    return px4Cov
 
     def publish_estimate(self,odom):
        time = odom.time_usec*1E-6
@@ -146,9 +146,9 @@ class CntrlPx4:
     async def input_meas_output_est(self,drone):
         async for odom in drone.telemetry.odometry():
             self.publish_estimate(odom)
-            if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
-                await drone.mocap.set_vision_position_estimate(self.pose)
-                self.prevPoseTime = self.pose.time_usec
+            # if self.pose.time_usec != self.prevPoseTime and self.meas1_received:
+            #     await drone.mocap.set_vision_position_estimate(self.pose)
+            #     self.prevPoseTime = self.pose.time_usec
             await drone.offboard.set_position_velocity_ned(self.positionCommands,self.feedForwardVelocity)
 
     async def print_status(self,drone):
