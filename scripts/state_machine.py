@@ -59,7 +59,7 @@ class StateMachine:
         self.update_hlc()
 
     def baseHeadingCallback(self,msg):
-        self.RBase = R.from_rotvec(np.array([0.0,0.0,msg.z])) #could add other orientations if needed.
+        self.RBase = R.from_rotvec(np.array([self.baseXYAttitude[0],self.baseXYAttitude[1],msg.z]))
 
     def baseVelocityCallback(self,msg):
         self.feedForwardVelocity[0] = msg.x
