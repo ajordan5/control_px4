@@ -6,7 +6,7 @@ state_machine: {
   antennaOffset: [0.74,-0.73,0.11],
   missionThreshold: 0.3,
   rendevousThreshold: 0.1,
-  rendevousHeight: -1.5,
+  rendevousHeight: -3.0,
   landingHeight: -0.35,
   landingThreshold: 0.2,
   baseXYAttitudeThreshold: 10.0,
