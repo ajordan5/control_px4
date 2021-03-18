@@ -59,7 +59,10 @@ class StateMachine:
         self.update_hlc()
 
     def baseHeadingCallback(self,msg):
-        self.RBase = R.from_rotvec(np.array([self.baseXYAttitude[0],self.baseXYAttitude[1],msg.z]))
+        print('base roll = ', self.baseXYAttitude[0])
+        print('base pitch = ', self.baseXYAttitude[1])
+        print('base heading = ', msg.z)
+        self.RBase = R.from_rotvec(np.array([self.baseXYAttitude[0]*np.pi/180.0,self.baseXYAttitude[1]*np.pi/180.0,msg.z]))
 
     def baseVelocityCallback(self,msg):
         self.feedForwardVelocity[0] = msg.x
@@ -74,9 +77,9 @@ class StateMachine:
     def update_hlc(self):
         if self.missionState == 1:
             commands = self.rendevous()
-        elif self.missionState == 2:
+        elif self.missionState == 2 or self.missionState == 3:
             commands = self.descend()
-        elif self.missionState == 3:
+        elif self.missionState == 5:
             commands = self.land()
         else:
             commands = self.rendevous()
