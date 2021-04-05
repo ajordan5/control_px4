@@ -72,6 +72,7 @@ class Pose2Ublox_Ros():
         self.rover_relPos.relPosNED[0] = self.p2u.rover_virtual_relpos[0]
         self.rover_relPos.relPosNED[1] = self.p2u.rover_virtual_relpos[1]
         self.rover_relPos.relPosNED[2] = self.p2u.rover_virtual_relpos[2]
+        self.rover_relPos.flags = 311
 
         self.rover_virtual_relpos_pub_.publish(self.rover_relPos)
 
@@ -93,6 +94,7 @@ class Pose2Ublox_Ros():
 
         self.compass_relPos.relPosHeading = self.p2u.compass_heading
         self.compass_relPos.accHeading = self.accHeading
+        self.compass_relPos.flags = 311
         self.compass_virtual_relPos_pub_.publish(self.compass_relPos)
 
     

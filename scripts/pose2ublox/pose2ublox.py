@@ -2,7 +2,7 @@
 
 import navpy
 import numpy as np
-
+from scipy.spatial.transform import Rotation as R
 
 class Pose2Ublox():
     
@@ -130,7 +130,7 @@ class Pose2Ublox():
 
     def update_compass_virtual_relPos(self):
 
-        euler = self.quat2euler(self.compass_quat)
+        euler = R.from_quat(self.compass_quat).as_euler('xyz',degrees=True)
         self.compass_heading = euler[2]
         if self.noise_on:
             self.compass_heading = np.random.normal(self.compass_heading, self.compassing_heading_accuracy)
@@ -169,30 +169,30 @@ class Pose2Ublox():
         else:
             return xt
 
-    def quat2euler(self, quat):
+    # def quat2euler(self, quat):
         
-        qw = quat[0]
-        qx = quat[1]
-        qy = quat[2]
-        qz = quat[3]
+    #     qw = quat[0]
+    #     qx = quat[1]
+    #     qy = quat[2]
+    #     qz = quat[3]
 
-        # roll (x-axis rotation)
-        sinr_cosp = 2.0 * (qw * qx + qy * qz)
-        cosr_cosp = 1.0 - 2.0 * (qx * qx + qy * qy)
-        roll = np.arctan2(sinr_cosp, cosr_cosp)
+    #     # roll (x-axis rotation)
+    #     sinr_cosp = 2.0 * (qw * qx + qy * qz)
+    #     cosr_cosp = 1.0 - 2.0 * (qx * qx + qy * qy)
+    #     roll = np.arctan2(sinr_cosp, cosr_cosp)
 
-        # pitch (y-axis rotation)
-        sinp = 2.0 * (qw * qy - qz * qx)
-        pitch = np.arcsin(sinp)
-        if abs(sinp) >= 1:
-            pitch = np.pi*np.sign(sinp) / 2.0 # use 90 degrees if out of range
+    #     # pitch (y-axis rotation)
+    #     sinp = 2.0 * (qw * qy - qz * qx)
+    #     pitch = np.arcsin(sinp)
+    #     if abs(sinp) >= 1:
+    #         pitch = np.pi*np.sign(sinp) / 2.0 # use 90 degrees if out of range
 
-        # yaw (z-axis rotation)
-        siny_cosp = 2.0 * (qw * qz + qx * qy)
-        cosy_cosp = 1.0 - 2 * (qy * qy + qz * qz)
-        yaw = np.arctan2(siny_cosp, cosy_cosp)
+    #     # yaw (z-axis rotation)
+    #     siny_cosp = 2.0 * (qw * qz + qx * qy)
+    #     cosy_cosp = 1.0 - 2 * (qy * qy + qz * qz)
+    #     yaw = np.arctan2(siny_cosp, cosy_cosp)
 
-        euler = [roll, pitch, yaw]
+    #     euler = [roll, pitch, yaw]
 
-        return euler
+    #     return euler
         
