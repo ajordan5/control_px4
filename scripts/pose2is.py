@@ -14,7 +14,11 @@ class Pose2Is:
         self.prevPosition = np.zeros(3)
         self.prevVelocity = np.zeros(3)
         self.prevEuler = np.zeros(3)
+        self.prevAcceleration = np.zeros(3)
+        self.prevAngularRates = np.zeros(3)
         self.prevTime = 0.0
+
+        self.alpha = 0.1
 
         self.firstTime = False
 
@@ -41,7 +45,8 @@ class Pose2Is:
 
     def get_imu_data(self,dt,position,quat):
         velocity = (position - self.prevPosition)/dt
-        acceleration = (velocity - self.prevVelocity)/dt
+        accelerationRaw = (velocity - self.prevVelocity)/dt
+        accelerationLpf = self.low_pass_filter(accelerationRaw,self.prevAcceleration)
 
         euler = R.from_quat(quat).as_euler('xyz')
         eulerDot = (euler - self.prevEuler)/dt
@@ -52,13 +57,20 @@ class Pose2Is:
         derivatives2Rates = np.array([[1.0, 0.0, -sth],
                                       [0.0, cphi, sphi*cth],
                                       [0.0, -sphi, cphi*cth]])
-        angularRates = derivatives2Rates@eulerDot
+        angularRatesRaw = derivatives2Rates@eulerDot
+        angularRatesLpf = self.low_pass_filter(angularRatesRaw,self.prevAngularRates)
 
         self.prevPosition = position
         self.prevVelocity = velocity
         self.prevEuler = euler
+        self.prevAcceleration = accelerationLpf
+        self.prevAngularRates = angularRatesLpf
 
-        return acceleration, angularRates
+        return accelerationLpf, angularRatesLpf
+
+    def low_pass_filter(self,y,u):
+        yNew = self.alpha*y+(1.0-self.alpha)*u
+        return yNew
 
     def publish_imu(self, stamp, acceleration, angularRates):
         self.imu.header.stamp = stamp
