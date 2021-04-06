@@ -44,11 +44,14 @@ class Pose2Is:
         self.publish_imu(msg.header.stamp, acceleration, angularRates)
 
     def get_imu_data(self,dt,position,quat):
+        Rb2i = R.from_quat(quat)
+        Ri2b = Rb2i.inv()
         velocity = (position - self.prevPosition)/dt
         accelerationRaw = (velocity - self.prevVelocity)/dt
         accelerationLpf = self.low_pass_filter(accelerationRaw,self.prevAcceleration)
+        accelerationBody = Ri2b.apply(accelerationLpf)
 
-        euler = R.from_quat(quat).as_euler('xyz')
+        euler = Rb2i.as_euler('xyz')
         eulerDot = (euler - self.prevEuler)/dt
         sphi = np.sin(euler.item(0))
         cphi = np.cos(euler.item(0))
@@ -66,7 +69,7 @@ class Pose2Is:
         self.prevAcceleration = accelerationLpf
         self.prevAngularRates = angularRatesLpf
 
-        return accelerationLpf, angularRatesLpf
+        return accelerationBody, angularRatesLpf
 
     def low_pass_filter(self,y,u):
         yNew = self.alpha*y+(1.0-self.alpha)*u
