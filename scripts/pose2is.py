@@ -18,7 +18,7 @@ class Pose2Is:
         self.prevAngularRates = np.zeros(3)
         self.prevTime = 0.0
 
-        self.alpha = 0.01
+        self.alpha = 0.05
 
         self.firstTime = False
 
@@ -46,11 +46,11 @@ class Pose2Is:
     def get_imu_data(self,dt,position,quat):
         Rb2i = R.from_quat(quat)
         Ri2b = Rb2i.inv()
-        velocity = (position - self.prevPosition)/dt
-        accelerationRaw = (velocity - self.prevVelocity)/dt
+        velocityRaw = (position - self.prevPosition)/dt
+        velocityLpf = self.low_pass_filter(velocityRaw,self.prevVelocity)
+        accelerationRaw = (velocityLpf - self.prevVelocity)/dt
         accelerationLpf = self.low_pass_filter(accelerationRaw,self.prevAcceleration)
         accelerationWithGravity = accelerationLpf + np.array([0.0,0.0,-9.81])
-        accelerometer = accelerationWithGravity
         accelerometer = Ri2b.apply(accelerationWithGravity)
 
         euler = Rb2i.as_euler('xyz')
@@ -63,11 +63,11 @@ class Pose2Is:
                                       [0.0, cphi, sphi*cth],
                                       [0.0, -sphi, cphi*cth]])
         angularRatesRaw = derivatives2Rates@eulerDot
-        angularRatesLpf = self.low_pass_filter(angularRatesRaw,self.prevAngularRates)
-        # angularRatesLpf = np.zeros(3)
+        # angularRatesLpf = self.low_pass_filter(angularRatesRaw,self.prevAngularRates)
+        angularRatesLpf = np.zeros(3)
 
         self.prevPosition = position
-        self.prevVelocity = velocity
+        self.prevVelocity = velocityLpf
         self.prevEuler = euler
         self.prevAcceleration = accelerationLpf
         self.prevAngularRates = angularRatesLpf
