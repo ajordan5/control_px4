@@ -18,7 +18,7 @@ class Pose2Is:
         self.prevAngularRates = np.zeros(3)
         self.prevTime = 0.0
 
-        self.alpha = 0.1
+        self.alpha = 0.01
 
         self.firstTime = False
 
@@ -49,7 +49,9 @@ class Pose2Is:
         velocity = (position - self.prevPosition)/dt
         accelerationRaw = (velocity - self.prevVelocity)/dt
         accelerationLpf = self.low_pass_filter(accelerationRaw,self.prevAcceleration)
-        accelerationBody = Ri2b.apply(accelerationLpf)
+        accelerationWithGravity = accelerationLpf + np.array([0.0,0.0,-9.81])
+        accelerometer = accelerationWithGravity
+        accelerometer = Ri2b.apply(accelerationWithGravity)
 
         euler = Rb2i.as_euler('xyz')
         eulerDot = (euler - self.prevEuler)/dt
@@ -62,6 +64,7 @@ class Pose2Is:
                                       [0.0, -sphi, cphi*cth]])
         angularRatesRaw = derivatives2Rates@eulerDot
         angularRatesLpf = self.low_pass_filter(angularRatesRaw,self.prevAngularRates)
+        # angularRatesLpf = np.zeros(3)
 
         self.prevPosition = position
         self.prevVelocity = velocity
@@ -69,7 +72,7 @@ class Pose2Is:
         self.prevAcceleration = accelerationLpf
         self.prevAngularRates = angularRatesLpf
 
-        return accelerationBody, angularRatesLpf
+        return accelerometer, angularRatesLpf
 
     def low_pass_filter(self,y,u):
         yNew = self.alpha*y+(1.0-self.alpha)*u
