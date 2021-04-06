@@ -33,10 +33,10 @@ class Px4_2Ublox(Pose2Ublox_Ros):
                                    msg.pose.position.y,
                                    msg.pose.position.z]) - np.array(self.antennaOffset)
 
-        self.p2u.compass_quat = np.array([msg.pose.orientation.w,
-                                        msg.pose.orientation.x,
-                                        msg.pose.orientation.y,
-                                        msg.pose.orientation.z])
+        self.p2u.compass_quat = np.array([msg.pose.orientation.x,
+                                          msg.pose.orientation.y,
+                                          msg.pose.orientation.z,
+                                          msg.pose.orientation.w])
 
         if not self.receivedPose:
             self.receivedBasePose = True

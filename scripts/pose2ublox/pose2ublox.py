@@ -50,7 +50,7 @@ class Pose2Ublox():
         self.rover_vel_lpf = np.zeros(3)
         self.rover_prev_time = 0.0
         self.rover_relpos_lpf = np.zeros(3)
-        self.compass_quat = np.zeros(4)
+        self.compass_quat = np.array([0.0,0.0,0.0,1.0])
         self.base_ned = np.zeros(3)
         self.base_ned_prev = np.zeros(3)
         self.base_ned_lpf = np.zeros(3)
@@ -129,7 +129,6 @@ class Pose2Ublox():
         self.base_vel_noise_prev = self.base_vel_noise
 
     def update_compass_virtual_relPos(self):
-
         euler = R.from_quat(self.compass_quat).as_euler('xyz',degrees=True)
         self.compass_heading = euler[2]
         if self.noise_on:

@@ -19,7 +19,7 @@
 
     <include file="$(find boat_estimator)/launch/standard.launch">
         <arg name="boat_imu"            value="/boat/imu"/>
-        <arg name="base_2_rover_relPos" value="/p2u/boat/RelPos"/>
+        <arg name="base_2_rover_relPos" value="/p2u/rover/RelPos"/>
         <arg name="rover_PosVelEcef"    value="/p2u/rover/PosVelEcef"/>
         <arg name="boat_PosVelEcef"     value="/p2u//boat/PosVelEcef"/>
         <arg name="compass_relPos"      value="/p2u/boat/compass/RelPos"/>
@@ -27,7 +27,7 @@
     </include>
     
     <node name="nav" pkg="control_px4" type="nav.py" output="screen">
-        <remap from="base2Rover_relPos" to="/p2u/boat/RelPos"/>
+        <remap from="base2Rover_relPos" to="/p2u/rover/RelPos"/>
         <remap from="posVelEcef" to="/p2u/rover/PosVelEcef"/>
         <remap from="base_posVelEcef" to="/p2u/boat/PosVelEcef"/>
         <remap from="compass_relPos" to="$(arg compass_relPos)"/>
