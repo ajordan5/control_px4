@@ -3,16 +3,13 @@
 <launch>
     <rosparam command="load" file="$(find control_px4)/params/state_machine.yaml"/>
     <node name="state_machine" pkg="control_px4" type="state_machine.py" output="screen">
-        <remap from="rover2BaseRelPos" to="/rover2Base_relPos_stripped"/>
-        <remap from="odom" to="/estimate"/>
-        <remap from="base_heading" to="/base_heading"/>
-	    <remap from="base_velocity" to="/base_velocity"/>
-	    <remap from="base_odom" to="/boat/odom"/>
+        <remap from="rover2BaseRelPos" to="/rover2base_relPos"/>
+	    <remap from="base_odom" to="/base_odom"/>
+        <remap from="rover_odom" to="/rover_odom"/>
     </node>
     <rosparam command="load" file="$(find control_px4)/params/control_px4.yaml"/>
     <node name="control_px4" pkg="control_px4" type="control_px4.py" output="screen">
         <remap from="commands" to="/hlc"/>
-        <remap from="position_measurement" to="/pose_update"/>
     </node>
     <node name="quat2euler" pkg="control_px4" type="quat2euler.py" output="screen"/>
 </launch>

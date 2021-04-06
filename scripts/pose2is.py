@@ -22,7 +22,7 @@ class Pose2Is:
 
         self.firstTime = False
 
-        self.inertial_sense_imu_pub_ = rospy.Publisher('/boat/imu', Imu, queue_size=5, latch=True)
+        self.inertial_sense_imu_pub_ = rospy.Publisher('/base/imu', Imu, queue_size=5, latch=True)
         self.base_sim_ned_sub_ = rospy.Subscriber('/base_pose', PoseStamped, self.baseNedCallback, queue_size=5)
 
         while not rospy.is_shutdown():

@@ -30,7 +30,7 @@ class CntrlPx4:
             self.systemAddress = rospy.get_param('~simSystemAddress', "udp://:14540")
         else:
             self.systemAddress = rospy.get_param('~realSystemAddress', "serial:///dev/ttyUSB0:921600")          
-        self.estimate_pub_ = rospy.Publisher('estimate',Odometry,queue_size=5,latch=True)
+        self.estimate_pub_ = rospy.Publisher('rover_odom',Odometry,queue_size=5,latch=True)
         self.commands_sub_ = rospy.Subscriber('commands', Odometry, self.commandsCallback, queue_size=5)
         # self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseWithCovarianceStamped, self.positionMeasurementCallback, queue_size=5)
         

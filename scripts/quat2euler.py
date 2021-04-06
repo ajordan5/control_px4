@@ -9,7 +9,7 @@ class Quat2Euler:
     def __init__(self):
         self.euler = Vector3Stamped()
         self.euler_pub_ = rospy.Publisher('euler',Vector3Stamped,queue_size=5,latch=True)
-        self.odom_sub_ = rospy.Subscriber('/estimate', Odometry, self.odomCallback, queue_size=5)
+        self.odom_sub_ = rospy.Subscriber('/rover_odom', Odometry, self.odomCallback, queue_size=5)
         while not rospy.is_shutdown():
             rospy.spin()
 
