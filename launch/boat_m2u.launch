@@ -4,12 +4,18 @@
 
   <arg name="target_name"         value="boat_landing_platform"/>
   <arg name="is_serial_port" default="/dev/ttyUSB0"/>
-  <arg name="need_ref_lla" value="true"/>
-  <!-- <arg name="base_serial_port" default="/dev/ttyACM1"/>
-  <arg name="base_host" default="192.168.0.111"/>
-  <arg name="rover_host" default="192.168.0.84"/> -->
+ 
+  <node name="node" pkg="optitrack_vrpn" type="node" output="screen"/>
 
-  <group ns="boat">
+  <group ns="m2u">
+      <rosparam command="load" file="$(find control_px4)/params/mocap2ublox.yaml"/>
+      <node name="mocap2ublox" pkg="control_px4" type="mocap2ublox.py" output="screen">
+          <remap from="/rover_pose" to="/rhodey_ned"/>
+          <remap from="/base_pose" to="/boat_landing_platform_ned"/>
+      </node>
+  </group>
+
+  <group ns="base">
     <!-- Inertial Sense Node -->
     <rosparam subst_value="True">
       inertial_sense: { port: "/dev/ttyUSB0",
@@ -37,33 +43,13 @@
 
       </rosparam>
 
-    <node name="inertial_sense" type="inertial_sense_node" pkg="inertial_sense" output="screen"/>
-	  
-      <!-- GPS Node-->
-      <!-- <node name="f9p" pkg="ublox" type="ublox_ros">
-        <param name="serial_port" value="$(arg base_serial_port)"/>
-        <param name="local_host" value="$(arg base_host)"/>
-        <param name="local_port" value="16140"/>
-        <param name="rover_host" value="$(arg rover_host)"/>
-        <param name="rover_port" value="16140"/>
-        <rosparam command="load" file="$(find ublox)/params/ublox.yaml"/>
-        <param name="rover_quantity" value="1"/>
-        <param name="base_type" value="moving"/>
-      </node>  -->
-
-      <!-- Estimator -->
-    <node name="estimator" type="ekf_node" pkg="roscopter" output="screen">
-      <remap from="imu" to="imu"/> <!--need to figure out the right topic here-->
-      <remap from="baro" to="dummy_topic"/>
-      <remap from="ublox_gnss" to="/m2u/base_PosVelEcef"/>
-      <remap from="ublox_relpos" to="/m2u/base2_relpos"/>
-      <remap from="common_ref_lla" to="/ref_lla"/>
-    </node>
-
-    <node name="is_throttler" type="throttle" pkg="topic_tools" args="messages /imu 10 /imu_throttled"/>
-
-  </group>
-
-  <!-- <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/base dash-all"/> -->
+    <include file="$(find boat_estimator)/launch/standard.launch">
+        <arg name="boat_imu"            value="/base/imu"/>
+        <arg name="base_2_rover_relPos" value="/m2u/rover/RelPos"/>
+        <arg name="rover_PosVelEcef"    value="/m2u/rover/PosVelEcef"/>
+        <arg name="boat_PosVelEcef"     value="/m2u//base/PosVelEcef"/>
+        <arg name="compass_relPos"      value="/m2u/base/compass/RelPos"/>
+        <arg name="params_file"         value="params"/>
+    </include>
 
 </launch>
