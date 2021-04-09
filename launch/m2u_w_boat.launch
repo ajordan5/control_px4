@@ -1,13 +1,14 @@
 <?xml version="1.0"?>
 
 <launch>
-    <arg name="bag_filename"        value="m2u_w_boat"/>
-    <arg name="rover_mocap"         value="/rhodey_ned"/>
-    <arg name="base_mocap"          value="/boat_landing_platform_ned"/>
-    <arg name="posVelEcef"          value="/m2u/rover/PosVelEcef"/>
-    <arg name="base2Rover_relPos"   value="/m2u/boat/RelPos"/>
-    <arg name="base_posVelEcef"     value="/m2u/boat/PosVelEcef"/>
-    <arg name="compass_relPos"      value="/m2u/boat/compass/RelPos"/>
+    <arg name="bag_filename"            value="m2u_w_boat"/>
+    <arg name="rover_mocap"             value="/rhodey_ned"/>
+    <arg name="base_mocap"              value="/boat_landing_platform_ned"/>
+    <arg name="posVelEcef"              value="/m2u/rover/PosVelEcef"/>
+    <arg name="base2Rover_relPos"       value="/m2u/boat/RelPos"/>
+    <arg name="base_posVelEcef"         value="/m2u/boat/PosVelEcef"/>
+    <arg name="compass_relPos"          value="/m2u/boat/compass/RelPos"/>
+    <arg name="base_estimator_params"   value = "params"/>
 
     <node name="node" pkg="optitrack_vrpn" type="node" output="screen"/>
     <group ns="m2u">
@@ -17,13 +18,23 @@
             <remap from="base_mocap" to="$(arg base_mocap)"/>
         </node>
     </group>
-    <node name="nav" pkg="control_px4" type="nav.py" output="screen">
+    <!-- <node name="nav" pkg="control_px4" type="nav.py" output="screen">
         <remap from="base2Rover_relPos" to="$(arg base2Rover_relPos)"/>
         <remap from="posVelEcef" to="$(arg posVelEcef)"/>
         <remap from="base_posVelEcef" to="$(arg base_posVelEcef)"/>
         <remap from="compass_relPos" to="$(arg compass_relPos)"/>
 	    <remap from="rover_pose_4_heading" to="$(arg rover_mocap)"/>
-    </node>
+    </node> -->
+
+    <include file="$(find boat_estimator)/launch/standard.launch">
+        <arg name="boat_imu"            value="/base/imu"/>
+        <arg name="base_2_rover_relPos" value="$(arg base2Rover_relPos"/>
+        <arg name="rover_PosVelEcef"    value="$(arg posVelEcef)"/>
+        <arg name="boat_PosVelEcef"     value="$(arg base_posVelEcef)"/>
+        <arg name="compass_relPos"      value="$(arg compass_relPos)"/>
+        <arg name="params_file"         value="params"/>
+    </include>
+
     <include file="$(find control_px4)/launch/include/control_px4.launch"/>
     <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/mocap/$(arg bag_filename).bag --all"/>
 </launch>
