@@ -43,30 +43,20 @@ class StateMachine:
         self.beginLandingRoutineMsg = Bool()
         self.hlc_pub_ = rospy.Publisher('hlc',Odometry,queue_size=5,latch=True)
         self.begin_landing_routine_pub_ = rospy.Publisher('begin_landing_routine',Bool,queue_size=5,latch=True)
-        self.rover2BaseRelPos_sub_ = rospy.Subscriber('rover2BaseRelPos', Vector3Stamped, self.rover2BaseRelPosCallback, queue_size=5)
         self.odom_sub_ = rospy.Subscriber('rover_odom',Odometry,self.odomCallback, queue_size=5)
         self.base_odom_sub_ = rospy.Subscriber('base_odom',Odometry,self.baseOdomCallback, queue_size=5)
 
         while not rospy.is_shutdown():
             rospy.spin()
 
-    def rover2BaseRelPosCallback(self,msg):
-        self.rover2BaseRelPos = [msg.vector.x,msg.vector.y,msg.vector.z]
-
     def odomCallback(self,msg):
         self.odom = [msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z]
         self.update_hlc()
 
-    #TODO: Get these from base odom
-    # def baseHeadingCallback(self,msg):
-    #     self.RBase = R.from_rotvec(np.array([0.0,0.0,msg.z])) #could add other orientations if needed.
-
-    # def baseVelocityCallback(self,msg):
-    #     self.feedForwardVelocity[0] = msg.x
-    #     self.feedForwardVelocity[1] = msg.y
-    #     self.feedForwardVelocity[2] = msg.z
-
     def baseOdomCallback(self,msg):
+        self.rover2BaseRelPos[0] = msg.pose.pose.position.x
+        self.rover2BaseRelPos[1] = msg.pose.pose.position.y
+        self.rover2BaseRelPos[2] = msg.pose.pose.position.z
         self.feedForwardVelocity[0] = msg.twist.twist.linear.x
         self.feedForwardVelocity[1] = msg.twist.twist.linear.y
         self.feedForwardVelocity[2] = msg.twist.twist.linear.z
