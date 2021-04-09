@@ -2,22 +2,23 @@
 
 <launch>
 
+  <arg name="bag_filename"       value="boat_m2u"/>
   <arg name="target_name"         value="boat_landing_platform"/>
-  <arg name="is_serial_port" default="/dev/ttyUSB0"/>
+  <!--arg name="is_serial_port" default="/dev/ttyUSB0"/-->
  
   <node name="node" pkg="optitrack_vrpn" type="node" output="screen"/>
 
   <group ns="m2u">
       <rosparam command="load" file="$(find control_px4)/params/mocap2ublox.yaml"/>
       <node name="mocap2ublox" pkg="control_px4" type="mocap2ublox.py" output="screen">
-          <remap from="/rover_pose" to="/rhodey_ned"/>
-          <remap from="/base_pose" to="/boat_landing_platform_ned"/>
+          <remap from="rover_mocap" to="/rhodey_ned"/>
+	  <remap from="base_mocap" to="/boat_landing_platform_ned"/>
       </node>
   </group>
 
   <group ns="base">
     <!-- Inertial Sense Node -->
-    <rosparam subst_value="True">
+    <!--rosparam subst_value="True">
       inertial_sense: { port: "/dev/ttyUSB0",
                             baud: 921600,
                             navigation_dt_ms: 10,
@@ -41,7 +42,7 @@
                             NMEA_ports: 0x02
                           }
 
-      </rosparam>
+      </rosparam-->
 
     <include file="$(find boat_estimator)/launch/standard.launch">
         <arg name="boat_imu"            value="/base/imu"/>
@@ -52,4 +53,5 @@
         <arg name="params_file"         value="params"/>
     </include>
   </group>
+  <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/mocap/$(arg bag_filename).bag --all"/>
 </launch>
