@@ -29,6 +29,6 @@
 
       </rosparam>
 
-    <node name="inertial_sense" type="inertial_sense_node" pkg="inertial_sense" output="screen"/>
+    <node name="inertial_sense" type="inertial_sense_node" pkg="inertial_sense_ros" output="screen"/>
   </group>
 </launch>
