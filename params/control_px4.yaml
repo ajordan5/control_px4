@@ -1,5 +1,6 @@
 control_px4: {
   sim: True,
+  mocap: False,
   simSystemAddress: "udp://:14540",
   realSystemAddress: "serial:///dev/ttyUSB0:921600",
 }
