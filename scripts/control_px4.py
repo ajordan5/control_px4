@@ -12,7 +12,7 @@ from scipy.spatial.transform import Rotation as R
 
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point
-from geometry_msgs.msg import PoseWithStamped
+from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Bool
 
 class CntrlPx4:
@@ -58,7 +58,12 @@ class CntrlPx4:
        self.meas1_received = True
 
     def convert_ros_covariance_to_px4_covariance(self):
-       px4Cov = [0.01]*21
+       px4Cov = [0.01, 0.0, 0.0, 0.0, 0.0, 0.0, \
+                 0.01, 0.0, 0.0, 0.0, 0.0, \
+                 0.01, 0.0, 0.0, 0.0, \
+                 0.01, 0.0, 0.0, \
+                 0.01, 0.0, \
+                 0.01]
     #    px4Cov[0:6] = rosCov[0:6]
     #    px4Cov[6:11] = rosCov[7:12]
     #    px4Cov[11:15] = rosCov[14:18]
