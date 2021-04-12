@@ -95,6 +95,8 @@ class StateMachine:
     def rendevous(self):
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
         currentWaypoint = error + np.array(self.odom)
+        print('rover2Base = ', self.rover2BaseRelPos)
+        print('odom = ', self.odom)
         if np.linalg.norm(error) < self.rendevousThreshold:
             self.missionState = 2
             print('descend state')
