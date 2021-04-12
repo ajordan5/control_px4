@@ -9,6 +9,7 @@
     <arg name="base_posVelEcef"         value="/m2u/base/PosVelEcef"/>
     <arg name="compass_relPos"          value="/m2u/base/compass/RelPos"/>
     <arg name="base_estimator_params"   value="params"/>
+    <arg name="position_measurement"    value="/rhodey_ned"/>
 
     <node name="node" pkg="optitrack_vrpn" type="node" output="screen"/>
     <group ns="m2u">
@@ -28,6 +29,8 @@
         <arg name="params_file"         value="params"/>
     </include>
 
-    <include file="$(find control_px4)/launch/include/control_px4.launch"/>
+    <include file="$(find control_px4)/launch/include/control_px4.launch">
+        <arg name="position_measurement"    value="$(arg position_measurement)"/>
+    </include>
     <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/mocap/$(arg bag_filename).bag --all"/>
 </launch>

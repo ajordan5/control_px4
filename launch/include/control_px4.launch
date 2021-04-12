@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 
 <launch>
+    <arg name="position_measurement" default="/no_external_meas"/>
+
     <rosparam command="load" file="$(find control_px4)/params/state_machine.yaml"/>
     <node name="state_machine" pkg="control_px4" type="state_machine.py" output="screen">
         <remap from="rover2BaseRelPos" to="/rover2base_relPos"/>
@@ -10,6 +12,7 @@
     <rosparam command="load" file="$(find control_px4)/params/control_px4.yaml"/>
     <node name="control_px4" pkg="control_px4" type="control_px4.py" output="screen">
         <remap from="commands" to="/hlc"/>
+        <remap from="position_measurement" to="$(arg position_measurement)"/>
     </node>
     <node name="quat2euler" pkg="control_px4" type="quat2euler.py" output="screen"/>
 </launch>
