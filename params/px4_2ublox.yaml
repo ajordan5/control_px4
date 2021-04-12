@@ -27,5 +27,6 @@ lpf_on: True, #low pass filter of measurements
 A: 6378137.0,       # WGS-84 Earth semimajor axis (m), from ekf_ros.cpp
 B: 6356752.314245,  # Derived Earth semiminor axis (m), from ekf_ros.cpp
 
-antennaOffset: [0.765,-0.840,0.074], #make sure this is the same as it is for state_machine.yaml
+# antennaOffset: [0.0,0.0,0.0]
+antennaOffset: [0.74,-0.73,0.11], #make sure this is the same as it is for state_machine.yaml
 }

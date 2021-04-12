@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+
+<launch>
+    <arg name="bag_filename"    value="p2u"/>
+    <arg name="compass_relPos"      value="p2u/boat/compass/RelPos"/>
+
+    <node name="listener" pkg="listener" type="listener_node" output="screen"/>
+    <group ns="p2u">
+        <rosparam command="load" file="$(find control_px4)/params/px4_2ublox.yaml"/>
+        <node name="px4_2ublox" pkg="control_px4" type="px4_2ublox.py" output="screen">
+            <remap from="/rover_pose" to="/gazebo_rover_pose"/>
+            <remap from="/base_pose" to="/gazebo_base_pose"/>
+        </node>
+    </group>
+
+    <group ns="p2i">
+        <node name="px4_2is" pkg="control_px4" type="pose2is.py" output="screen">
+            <remap from="/base_pose" to="/gazebo_base_pose"/>
+        </node>
+    </group>
+
+    <include file="$(find boat_estimator)/launch/standard.launch">
+        <arg name="boat_imu"            value="/base/imu"/>
+        <arg name="base_2_rover_relPos" value="/p2u/rover/RelPos"/>
+        <arg name="rover_PosVelEcef"    value="/p2u/rover/PosVelEcef"/>
+        <arg name="boat_PosVelEcef"     value="/p2u//base/PosVelEcef"/>
+        <arg name="compass_relPos"      value="/p2u/base/compass/RelPos"/>
+        <arg name="params_file"         value="params"/>
+    </include>
+    
+    <include file="$(find control_px4)/launch/include/control_px4.launch"/>
+    <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/boatLanding_sim/$(arg bag_filename).bag --all"/>
+</launch>

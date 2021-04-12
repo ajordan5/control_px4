@@ -20,10 +20,10 @@ class Pose2Ublox_Ros():
             self.sigma_base_vel, self.lpf_on, self.A, self.B)
 
         # Publishers
-        self.rover_virtual_relpos_pub_ = rospy.Publisher('boat/RelPos', RelPos, queue_size=5, latch=True)
+        self.rover_virtual_relpos_pub_ = rospy.Publisher('rover/RelPos', RelPos, queue_size=5, latch=True)
         self.rover_virtual_PosVelEcef_pub_ = rospy.Publisher('rover/PosVelEcef', PosVelEcef, queue_size=5, latch=True)
-        self.compass_virtual_relPos_pub_ = rospy.Publisher('boat/compass/RelPos', RelPos, queue_size=5, latch=True)
-        self.base_virtual_PosVelEcef_pub_ = rospy.Publisher('boat/PosVelEcef', PosVelEcef, queue_size=5, latch=True)
+        self.compass_virtual_relPos_pub_ = rospy.Publisher('base/compass/RelPos', RelPos, queue_size=5, latch=True)
+        self.base_virtual_PosVelEcef_pub_ = rospy.Publisher('base/PosVelEcef', PosVelEcef, queue_size=5, latch=True)
         
         # Timer
         self.ublox_rate_timer_ = rospy.Timer(rospy.Duration(self.Ts), self.ubloxRateCallback)
@@ -72,6 +72,7 @@ class Pose2Ublox_Ros():
         self.rover_relPos.relPosNED[0] = self.p2u.rover_virtual_relpos[0]
         self.rover_relPos.relPosNED[1] = self.p2u.rover_virtual_relpos[1]
         self.rover_relPos.relPosNED[2] = self.p2u.rover_virtual_relpos[2]
+        self.rover_relPos.flags = 311
 
         self.rover_virtual_relpos_pub_.publish(self.rover_relPos)
 
@@ -93,6 +94,7 @@ class Pose2Ublox_Ros():
 
         self.compass_relPos.relPosHeading = self.p2u.compass_heading
         self.compass_relPos.accHeading = self.accHeading
+        self.compass_relPos.flags = 311
         self.compass_virtual_relPos_pub_.publish(self.compass_relPos)
 
     
