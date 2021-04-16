@@ -10,12 +10,13 @@ from nav_msgs.msg import Odometry
 from ublox.msg import RelPos
 from ublox.msg import PosVelEcef
 from std_msgs.msg import Bool
+from geometry_msgs.msg import PointStamped
 from scipy.spatial.transform import Rotation as R
 
 
 class StateMachine:
     def __init__(self):
-        self.missionState = 0 #0 - mission
+        self.missionState = 1 #0 - mission
                               #1 - rendevous
                               #2 - descend
                               #3 - land
@@ -40,8 +41,13 @@ class StateMachine:
         self.feedForwardVelocity = [0.0,0.0,0.0]
         self.hlcMsg = PoseStamped()
         self.beginLandingRoutineMsg = Bool()
+        
         self.hlc_pub_ = rospy.Publisher('hlc',Odometry,queue_size=5,latch=True)
         self.begin_landing_routine_pub_ = rospy.Publisher('begin_landing_routine',Bool,queue_size=5,latch=True)
+        self.mission_state_pub = rospy.Publisher('mission_state',PointStamped,queue_size=5,latch=True)
+
+        self.publish_mission_state()
+
         self.odom_sub_ = rospy.Subscriber('rover_odom',Odometry,self.odomCallback, queue_size=5)
         self.base_odom_sub_ = rospy.Subscriber('base_odom',Odometry,self.baseOdomCallback, queue_size=5)
 
@@ -83,6 +89,7 @@ class StateMachine:
             self.currentWaypointIndex += 1
             if self.currentWaypointIndex == len(self.waypoints) and self.autoLand == True:
                 self.missionState = 1
+                self.publish_mission_state()
                 print('rendevous state')
                 self.beginLandingRoutineMsg.data = True
                 self.begin_landing_routine_pub_.publish(self.beginLandingRoutineMsg)
@@ -97,6 +104,7 @@ class StateMachine:
         currentWaypoint = error + np.array(self.odom)
         if np.linalg.norm(error) < self.rendevousThreshold:
             self.missionState = 2
+            self.publish_mission_state()
             print('descend state')
         return [currentWaypoint,self.feedForwardVelocity]
 
@@ -107,6 +115,7 @@ class StateMachine:
         baseXYAttitude = euler[0:1]
         if np.linalg.norm(error) < self.landingThreshold and np.linalg.norm(baseXYAttitude) < self.baseXYAttitudeThreshold:
             self.missionState = 3
+            self.publish_mission_state()
             print('land state')
         return [currentWaypoint,self.feedForwardVelocity]
 
@@ -124,6 +133,12 @@ class StateMachine:
         self.hlc.twist.twist.linear.z = commands[1][2]
         self.hlc.header.stamp = rospy.Time.now()
         self.hlc_pub_.publish(self.hlc)
+
+    def publish_mission_state(self):
+        missionState = PointStamped()
+        missionState.header.stamp = rospy.Time.now()
+        missionState.point.x = self.missionState
+        self.mission_state_pub.publish(missionState)
 
 if __name__ == "__main__":
     rospy.init_node('state_machine', anonymous=True)

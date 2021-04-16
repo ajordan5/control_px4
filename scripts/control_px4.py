@@ -14,6 +14,7 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Bool
+from geometry_msgs.msg import PointStamped
 
 class CntrlPx4:
     def __init__(self):
@@ -23,6 +24,7 @@ class CntrlPx4:
         self.estimateMsg = Odometry()
         self.meas1_received = False
         self.flightMode = 'none'
+        self.flightModeRos = PointStamped()
         self.offBoardOn = False
         self.sim = rospy.get_param('~sim', False)
         self.mocap = rospy.get_param('~mocap', False)
@@ -33,6 +35,7 @@ class CntrlPx4:
         else:
             self.systemAddress = rospy.get_param('~realSystemAddress', "serial:///dev/ttyUSB0:921600")          
         self.estimate_pub_ = rospy.Publisher('rover_odom',Odometry,queue_size=5,latch=True)
+        self.flight_mode_pub_ = rospy.Publisher('flight_mode',PointStamped,queue_size=5,latch=True)
         self.commands_sub_ = rospy.Subscriber('commands', Odometry, self.commandsCallback, queue_size=5)
         if self.mocap:
             self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseStamped, self.positionMeasurementCallback, queue_size=5)
@@ -107,6 +110,11 @@ class CntrlPx4:
        rosCov[35] = px4Cov[20]
        return rosCov
 
+    def publish_flight_mode(self):
+        self.flightModeRos.header.stamp = rospy.Time.now()
+        self.flightModeRos.point.x = self.flightMode.value
+        self.flight_mode_pub_.publish(self.flightModeRos)
+
     async def run(self):
         drone = System()
         print('system address = ', self.systemAddress)
@@ -152,6 +160,7 @@ class CntrlPx4:
             if self.flightMode != flight_mode:
                 print("FlightMode:", flight_mode)
                 self.flightMode = flight_mode
+                self.publish_flight_mode()
 
     async def input_meas_output_est(self,drone):
         async for odom in drone.telemetry.odometry():
