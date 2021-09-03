@@ -14,6 +14,25 @@ from scipy.spatial.transform import Rotation as R
 
 
 class StateMachine:
+    """A class to manage the state of the a multi-rotor as it attempts to land on moving target.
+
+    Attributes:
+        missionState (int): integer indicator for vehicle state
+        waypoints (list[float]): 3d waypoints for the vehicle to follow enroute to the target, relative to the target (NED)
+        hlc ???
+        antennaOffset (List[float]): position of rtk-gps antenna relative to the target
+        missionThreshold (float): maximum norm of the error to a waypoint to consider it reached in meters
+        rendevousThreshold (float): maximum norm of the error from vehicle to rendezvous waypoint to transition to descend
+        rendevousHeight (float): target height (m) for the rendezvous state
+        landingThreshold (float): maximum norm of the error from vehicle to descend waypoint to transition to land
+        baseXYAttitudeThreshold (float): allowable tilt in the target base for a landing attempt (deg.)
+        autoland ???
+        cyclicalPath ???
+        roverNed (list[float]): rover NED location in the intertial frame 
+        boatNed (list[float]): boat NED location in the intertial frame 
+        rover2BaseRelPos (list[float]): NED position of the boat relative to the rover
+        feedForwardVelocity (list[float]): NED base velocity for a feedforward term in the control
+    """
     def __init__(self):
         self.missionState = 0 #0 - mission
                               #1 - rendevous
@@ -27,8 +46,8 @@ class StateMachine:
         self.rendevousThreshold = rospy.get_param('~rendevousThreshold', 0.3)
         self.rendevousHeight = rospy.get_param('~rendevousHeight', -2.0)
         self.landingThreshold = rospy.get_param('~landingThreshold', 0.1)
-        self.baseXYAttitudeThreshold = rospy.get_param('~baseXYAttitudeThreshold',8.0)
         self.landingHeight = rospy.get_param('~landingHeight', -0.15)
+        self.baseXYAttitudeThreshold = rospy.get_param('~baseXYAttitudeThreshold',8.0)
         self.autoLand = rospy.get_param('~autoLand', False)
         self.cyclicalPath = rospy.get_param('~cyclicalPath', False)
 
@@ -75,6 +94,7 @@ class StateMachine:
 
         self.publish_hlc(commands)
 
+    """
     def fly_mission(self):
         currentWaypoint = self.waypoints[self.currentWaypointIndex]
         error = np.linalg.norm(np.array(currentWaypoint)-np.array(self.odom))
@@ -91,9 +111,10 @@ class StateMachine:
             elif self.currentWaypointIndex == len(self.waypoints):
                 self.currentWaypointIndex -=1
         return [currentWaypoint,[0.0,0.0,0.0]]
-
+    """
     def rendevous(self):
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        # Waypoint position is the current vehicle position plus the error
         currentWaypoint = error + np.array(self.odom)
         print('rover2Base = ', self.rover2BaseRelPos)
         print('odom = ', self.odom)
@@ -113,14 +134,17 @@ class StateMachine:
         return [currentWaypoint,self.feedForwardVelocity]
 
     def land(self):
+        # Set the waypoint to 5 meters below the landing pad
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,5.0]) + self.Rb2i.apply(np.array(self.antennaOffset))
         currentWaypoint = error + np.array(self.odom) #multirotor attemptes to drive itself into the platform 5 meters deep.
         return [currentWaypoint,self.feedForwardVelocity]
 
     def publish_hlc(self,commands):
+        # Publish the current waypoint
         self.hlc.pose.pose.position.x = commands[0][0]
         self.hlc.pose.pose.position.y = commands[0][1]
         self.hlc.pose.pose.position.z = commands[0][2]
+        # Publish the base velocity for a feedforward term in the control
         self.hlc.twist.twist.linear.x = commands[1][0]
         self.hlc.twist.twist.linear.y = commands[1][1]
         self.hlc.twist.twist.linear.z = commands[1][2]
