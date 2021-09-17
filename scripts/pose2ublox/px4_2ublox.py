@@ -11,12 +11,13 @@ class Px4_2Ublox(Pose2Ublox_Ros):
 
         self.receivedRoverPose = False
         self.receivedBasePose = False
+        
         # Subscribers
         self.rover_sim_ned_sub_ = rospy.Subscriber('/rover_pose', PoseStamped, self.roverNedCallback, queue_size=5)
         self.base_sim_ned_sub_ = rospy.Subscriber('/base_pose', PoseStamped, self.baseNedCallback, queue_size=5)
 
         while not rospy.is_shutdown():
-            # wait for new messages and call the callback when they arrive
+            # Wait for new messages and call the callback when they arrive
             rospy.spin()
 
     def roverNedCallback(self, msg):

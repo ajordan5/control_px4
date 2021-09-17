@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
 import asyncio
-
 from mavsdk import System
-
 
 async def run():
     """Set necessary parameters to start simulation with mavsdk."""
@@ -14,7 +12,7 @@ async def run():
     print("Waiting for drone to connect...")
     async for state in drone.core.connection_state():
         if state.is_connected:
-            print(f"Drone discovered with UUID: {state.uuid}")
+            #print(f"Drone discovered with UUID: {state.uuid}")
             break
 
     #Integer bitmask controlling data fusion and aiding methods

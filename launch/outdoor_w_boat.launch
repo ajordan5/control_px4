@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-
+<!--Launch file for outdoor launches with boat-->
 <launch>
     <arg name="bag_filename"            value="outdoor_w_boat"/>
     <arg name="rover_serial_port"       value="/dev/ttyACM0"/>

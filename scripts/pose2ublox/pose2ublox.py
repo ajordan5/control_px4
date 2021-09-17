@@ -5,7 +5,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 class Pose2Ublox():
-    
+    """A class to manage the updating of rover and base virtual pose/velocity and position of the rover relative to the base"""
 
     def __init__(self, Ts, gha, gva, gsa, rha, rva, rsa, cha, no, rl, srp, srv, srr, sbp, sbv, lo, A, B):
 
@@ -74,15 +74,14 @@ class Pose2Ublox():
 
     def update_rover_virtual_PosVelEcef(self, dt):
 
-        #calculate virtual position in ecef frame with noise
+        # Calculate virtual position in ecef frame with noise
         self.rover_ned_noise = self.add_gps_noise(self.white_noise_3d, self.rover_ned_noise, self.sigma_rover_pos)
         rover_ned_w_noise = self.rover_ned + self.rover_ned_noise
         self.rover_virtual_lla = navpy.ned2lla(rover_ned_w_noise,self.ref_lla[0],self.ref_lla[1],self.ref_lla[2])
         self.rover_virtual_pos_ecef = navpy.lla2ecef(self.rover_virtual_lla[0],self.rover_virtual_lla[1],self.rover_virtual_lla[2])
 
-        #calculate virtual velocity in ecef frame with noise
-        #make sure we do not divide by zero
-        if dt != 0.0:
+        # Calculate virtual velocity in ecef frame with noise
+        if dt != 0.0: # Make sure we do not divide by zero
             rover_vel = (self.rover_ned - self.rover_ned_prev)/dt
         else:
             rover_vel = np.zeros(3)
@@ -91,13 +90,13 @@ class Pose2Ublox():
         rover_vel_w_noise = rover_vel + self.rover_vel_lpf
         self.rover_virtual_vel_ecef = navpy.ned2ecef(rover_vel_w_noise,self.ref_lla[0],self.ref_lla[1],self.ref_lla[2]) #self.ned2ecef(rover_vel_w_noise, self.ref_lla)
 
-        #update histories
+        # Update histories
         self.rover_ned_prev = self.rover_ned
         self.rover_vel_prev = rover_vel
         self.rover_vel_noise_prev = self.rover_vel_noise
 
     def update_rover_virtual_relPos(self):
-        #calculate virtual relative position of the rover with respect to the base in ned frame with noise.
+        # Calculate virtual relative position of the rover with respect to the base in ned frame with noise.
         relpos_array = self.rover_ned - self.base_ned
         rover_relpos_noise = self.add_noise_3d(relpos_array, self.relpos_std_dev_3d)
         self.rover_relpos_lpf = self.lpf(rover_relpos_noise, self.rover_relpos_lpf, self.Ts, self.sigma_rover_relpos)
@@ -106,15 +105,14 @@ class Pose2Ublox():
 
     def update_base_virtual_PosVelEcef(self, dt):
 
-        #calculate virtual position in ecef frame with noise
+        # Calculate virtual position in ecef frame with noise
         self.base_ned_noise = self.add_gps_noise(self.white_noise_3d, self.base_ned_noise, self.sigma_base_pos)
         base_ned_w_noise = self.base_ned + self.base_ned_noise
         self.base_virtual_lla = navpy.ned2lla(base_ned_w_noise,self.ref_lla[0],self.ref_lla[1],self.ref_lla[2])
         self.base_virtual_pos_ecef = navpy.lla2ecef(self.base_virtual_lla[0],self.base_virtual_lla[1],self.base_virtual_lla[2])
         
-        #calculate virtual velocity in ecef frame with noise
-        #make sure we do not divide by zero
-        if dt != 0.0:
+        # Calculate virtual velocity in ecef frame with noise
+        if dt != 0.0: # Make sure we do not divide by zero
             base_vel = (self.base_ned - self.base_ned_prev)/dt
         else:
             base_vel = np.zeros(3)
@@ -123,7 +121,7 @@ class Pose2Ublox():
         base_vel_w_noise = base_vel + self.base_vel_lpf
         self.base_virtual_vel_ecef = navpy.ned2ecef(base_vel_w_noise,self.ref_lla[0],self.ref_lla[1],self.ref_lla[2]) #self.ned2ecef(base_vel_w_noise, self.ref_lla)
 
-        #update histories
+        # Update histories
         self.base_ned_prev = self.base_ned
         self.base_vel_prev = base_vel
         self.base_vel_noise_prev = self.base_vel_noise
@@ -150,7 +148,7 @@ class Pose2Ublox():
 
     def add_gps_noise(self, white_noise_3d, noise_prev, sigma):
 
-        #Eq 7.17 Small Unmanned Aircraft (Beard, McLain) pg 139
+        # Eq 7.17 Small Unmanned Aircraft (Beard, McLain) pg 139
         white_noise = self.add_noise_3d(np.zeros(3), self.white_noise_3d)
         color_noise = np.exp(-self.Kgps*self.Ts)*noise_prev
         total_noise = white_noise + color_noise
@@ -160,7 +158,7 @@ class Pose2Ublox():
 
     def lpf(self, xt, x_prev, dt, sigma):
         
-        #low pass filter
+        # Low pass filter
         if self.lpf_on:
             x_lpf = xt*dt/(sigma+dt) + x_prev*sigma/(sigma+dt)
             return x_lpf

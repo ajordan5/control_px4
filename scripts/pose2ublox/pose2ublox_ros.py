@@ -10,8 +10,11 @@ from ublox.msg import PosVelEcef
 from ublox.msg import RelPos
 
 class Pose2Ublox_Ros():
+    """A class to manage the publishing of rover and base virtual pose/velocity and position of the rover relative to the base."""
     def __init__(self):
         self.load_set_parameters()
+
+        # Pose2Ublox object
         self.p2u = Pose2Ublox(self.Ts, self.global_horizontal_accuracy, \
             self.global_vertical_accuracy, self.global_speed_accuracy, \
             self.relative_horizontal_accuracy, self.relative_vertical_accuracy, \
@@ -25,7 +28,7 @@ class Pose2Ublox_Ros():
         self.compass_virtual_relPos_pub_ = rospy.Publisher('base/compass/RelPos', RelPos, queue_size=5, latch=True)
         self.base_virtual_PosVelEcef_pub_ = rospy.Publisher('base/PosVelEcef', PosVelEcef, queue_size=5, latch=True)
         
-        # Timer
+        # Timer: periodically calls the provided callback
         self.ublox_rate_timer_ = rospy.Timer(rospy.Duration(self.Ts), self.ubloxRateCallback)
     
     def ubloxRateCallback(self, event):

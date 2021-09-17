@@ -17,14 +17,14 @@ from std_msgs.msg import Bool
 
 class CntrlPx4:
     def __init__(self):
-        self.positionCommands = PositionNedYaw(0.0,0.0,0.0,0.0)
+        self.positionCommands = PositionNedYaw(0.0,0.0,0.0,0.0) # look up on mavsdk
         self.feedForwardVelocity = VelocityNedYaw(0.0,0.0,0.0,0.0)
         self.prevPoseTime = 0.0
         self.estimateMsg = Odometry()
         self.meas1_received = False
         self.flightMode = 'none'
         self.offBoardOn = False
-        self.sim = rospy.get_param('~sim', False)
+        self.sim = rospy.get_param('~sim', True)
         self.mocap = rospy.get_param('~mocap', False)
         self.in_air = 0
         self.arm_status = 0
@@ -38,6 +38,7 @@ class CntrlPx4:
             self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseStamped, self.positionMeasurementCallback, queue_size=5)
         
     def commandsCallback(self,msg):
+        """Callback mechanism invoked each time an Odometry msg is received on the commands topic"""
         self.positionCommands.north_m = msg.pose.pose.position.x
         self.positionCommands.east_m = msg.pose.pose.position.y
         self.positionCommands.down_m = msg.pose.pose.position.z
@@ -46,16 +47,17 @@ class CntrlPx4:
         self.feedForwardVelocity.down_m_s = msg.twist.twist.linear.z
 
     def positionMeasurementCallback(self,msg):
-       time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
-       time = int(round(time,6)*1E6)
-       quat = [msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z,msg.pose.orientation.w]
-       euler = R.from_quat(quat).as_euler('xyz')
-       angleBody = AngleBody(euler[0],euler[1],euler[2])
-       positionBody = PositionBody(msg.pose.position.x,msg.pose.position.y,msg.pose.position.z)
-       covarianceMatrix = self.convert_ros_covariance_to_px4_covariance()
-       poseCovariance = Covariance(covarianceMatrix)
-       self.pose = VisionPositionEstimate(time,positionBody,angleBody,poseCovariance)
-       self.meas1_received = True
+        """Callback mechanism for flights utilizing mocap."""
+        time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
+        time = int(round(time,6)*1E6)
+        quat = [msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z,msg.pose.orientation.w]
+        euler = R.from_quat(quat).as_euler('xyz')
+        angleBody = AngleBody(euler[0],euler[1],euler[2])
+        positionBody = PositionBody(msg.pose.position.x,msg.pose.position.y,msg.pose.position.z)
+        covarianceMatrix = self.convert_ros_covariance_to_px4_covariance()
+        poseCovariance = Covariance(covarianceMatrix)
+        self.pose = VisionPositionEstimate(time,positionBody,angleBody,poseCovariance)
+        self.meas1_received = True
 
     def convert_ros_covariance_to_px4_covariance(self):
        px4Cov = [0.01, 0.0, 0.0, 0.0, 0.0, 0.0, \
@@ -108,52 +110,67 @@ class CntrlPx4:
        return rosCov
 
     async def run(self):
+
         drone = System()
         print('system address = ', self.systemAddress)
-        await drone.connect(system_address=self.systemAddress)
-
+        if self.sim == True:
+            await drone.connect(system_address="udp://:14540")
+        else:
+            await drone.connect(system_address=self.systemAddress)
         print("Waiting for drone to connect...")
-        await asyncio.sleep(5)
+        await asyncio.sleep(1)
         async for state in drone.core.connection_state():
+            print(self.systemAddress, )
             if state.is_connected:
-                print(f"Drone discovered with UUID: {state.uuid}")
+                #print(f"Drone discovered with UUID: {"!!!!!figure out how to access uuid"}") #state.uuid}")
+                print("Connected!")
                 break
 
+        # Setup simulation. This used to be at the bottom
+        if self.sim == True:
+            print("ARMING")
+            await drone.action.arm()
+            #await drone.action.start_mission()
+            await drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
+            await drone.offboard.start()
+            print("Simulation starting offboard.")
+
         #TODO publish all of these messages, so that rosbags contain this information
-        await drone.telemetry.set_rate_odometry(100)
+        await drone.telemetry.set_rate_odometry(100)    # Hz
+
+        # Here the command location and feedforward velocity are sent to PX4
         asyncio.ensure_future(self.input_meas_output_est(drone))
         asyncio.ensure_future(self.flight_modes(drone))
         # await drone.telemetry.set_rate_attitude(1) #doesn't seem to affect euler?
         # asyncio.ensure_future(self.print_euler(drone))
         await drone.telemetry.set_rate_battery(0.1)
-        asyncio.ensure_future(self.print_battery(drone))
+        #asyncio.ensure_future(self.print_battery(drone))
         await drone.telemetry.set_rate_in_air(1)
-        asyncio.ensure_future(self.print_in_air(drone))
+        #asyncio.ensure_future(self.print_in_air(drone))
         await drone.telemetry.set_rate_landed_state(1)
         asyncio.ensure_future(self.print_landed_state(drone))
         await drone.telemetry.set_rate_rc_status(0.1)
-        asyncio.ensure_future(self.print_landed_state(drone))
+        #asyncio.ensure_future(self.print_landed_state(drone))
+
         # await drone.telemetry.set_rate_gps_info(0.1)  #This message slows down estimate by 99 hz.
         # asyncio.ensure_future(self.print_gps_info(drone))
+        """
         asyncio.ensure_future(self.print_status(drone))
         asyncio.ensure_future(self.print_armed(drone))
-        asyncio.ensure_future(self.print_health(drone))
-
-        if self.sim == True:
-            await drone.action.arm()
-            await drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
-            await drone.offboard.start()
-            print("Simulation starting offboard.")
+        asyncio.ensure_future(self.print_health(drone))"""
+        
 
         print('end of run')
         
     async def flight_modes(self,drone):
+        """Set the current flight mode to match that indicated by the mavsdk system"""
         async for flight_mode in drone.telemetry.flight_mode():
             if self.flightMode != flight_mode:
                 print("FlightMode:", flight_mode)
                 self.flightMode = flight_mode
 
     async def input_meas_output_est(self,drone):
+        """Publish odometry estimates. Set position and feedforward velocity commands"""
         async for odom in drone.telemetry.odometry():
             self.publish_estimate(odom)
             if self.mocap and self.pose.time_usec != self.prevPoseTime and self.meas1_received:

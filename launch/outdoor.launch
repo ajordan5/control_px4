@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-
+<!--Launch file for outdoor launches-->
 <launch>
     <arg name="bag_filename"        value="outdoor"/>
     <arg name="rover_serial_port"   value="/dev/ttyACM0"/>

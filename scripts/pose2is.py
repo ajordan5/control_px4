@@ -9,9 +9,12 @@ from sensor_msgs.msg import Imu
 from geometry_msgs.msg import PoseStamped
 
 class Pose2Is:
+    """Class to convert pose information to simulated imu data. Subscribes to the /base_pose topic and
+    publishes the sim imu data to /base/imu"""
     def __init__(self):
         self.imu = Imu()
 
+        # Variables for saving previous time and states
         self.prevPosition = np.zeros(3)
         self.prevVelocity = np.zeros(3)
         self.prevEuler = np.zeros(3)
@@ -19,6 +22,7 @@ class Pose2Is:
         self.prevAngularRates = np.zeros(3)
         self.prevTime = 0.0
 
+        # Low-pass filter alpha
         self.alpha = 0.05
 
         self.firstTime = False
@@ -30,6 +34,7 @@ class Pose2Is:
             rospy.spin()
 
     def baseNedCallback(self,msg):
+        """Each time a PoseStamped msg is received, use the msg combined with info from previous msgs to simulate imu data."""
         time = msg.header.stamp.secs + msg.header.stamp.nsecs*1E-9
         if self.firstTime:
             self.prevTime = time
@@ -45,6 +50,7 @@ class Pose2Is:
         self.publish_imu(msg.header.stamp, acceleration, angularRates)
 
     def get_imu_data(self,dt,position,quat):
+        """Generate imu data from current and previous pose data."""
         Rb2i = R.from_quat(quat)
         Ri2b = Rb2i.inv()
         velocityRaw = (position - self.prevPosition)/dt
