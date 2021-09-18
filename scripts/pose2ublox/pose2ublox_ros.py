@@ -10,7 +10,9 @@ from ublox.msg import PosVelEcef
 from ublox.msg import RelPos
 
 class Pose2Ublox_Ros():
-    """A class to manage the publishing of rover and base virtual pose/velocity and position of the rover relative to the base."""
+    """A class to manage the publishing of rover and base virtual pose/velocity and position of the rover relative to the base.
+    Virtual GPS data is generated for non-outdoor flights. For simulation, GPS data is sythetically generated from Gazebo. When 
+    flying in the motion capture room, data is generated from the motion capture output."""
     def __init__(self):
         self.load_set_parameters()
 

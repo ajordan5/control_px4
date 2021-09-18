@@ -5,6 +5,7 @@ from pose2ublox_ros import Pose2Ublox_Ros
 from geometry_msgs.msg import PoseStamped
 
 class Mocap2Ublox(Pose2Ublox_Ros):
+    """Subscribe to and save motion capture pose date for rover and base."""
     def __init__(self):
         super().__init__()
         self.receivedRoverPose = False
