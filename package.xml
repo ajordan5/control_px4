@@ -3,7 +3,7 @@
   <name>control_px4</name>
   <version>0.0.0</version>
   <description>The control_px4 package</description>
-  <maintainer email="matthewk.rydalch@gmail.com">matt</maintainer>
+  <maintainer email="a.jordan6955@gmail.com">alex</maintainer>
   <license>TODO</license>
 
   <buildtool_depend>catkin</buildtool_depend>

@@ -47,7 +47,7 @@ class CntrlPx4:
         self.feedForwardVelocity.down_m_s = msg.twist.twist.linear.z
 
     def positionMeasurementCallback(self,msg):
-        """Callback mechanism for flights utilizing mocap."""
+        """Callback mechanism for flights utilizing mocap. Collect mocap message and store in self.pose"""
         time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
         time = int(round(time,6)*1E6)
         quat = [msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z,msg.pose.orientation.w]
@@ -120,13 +120,12 @@ class CntrlPx4:
         print("Waiting for drone to connect...")
         await asyncio.sleep(1)
         async for state in drone.core.connection_state():
-            print(self.systemAddress, )
             if state.is_connected:
                 #print(f"Drone discovered with UUID: {"!!!!!figure out how to access uuid"}") #state.uuid}")
                 print("Connected!")
                 break
 
-        # Setup simulation. This used to be at the bottom
+        # Setup simulation. This used to be at the bottom of the run function but was not working
         if self.sim == True:
             print("ARMING")
             await drone.action.arm()
@@ -174,6 +173,7 @@ class CntrlPx4:
         async for odom in drone.telemetry.odometry():
             self.publish_estimate(odom)
             if self.mocap and self.pose.time_usec != self.prevPoseTime and self.meas1_received:
+                # Send vision position estimate from mocap to mavsdk
                 await drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
             await drone.offboard.set_position_velocity_ned(self.positionCommands,self.feedForwardVelocity)
