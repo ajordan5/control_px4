@@ -31,17 +31,17 @@
       ```bash
         $ git submodule update --init --recursive
       ```
-4. Add the following lines to your .zsh or .bashrc (you may want or need to comment out the python path lines when you are working on other stuff or run those commands every time you launch the simulator rather than adding them to your source file):
+4.  Build the gazebo models and plugins by running this command in the PX4-Autopilot directory:
+    
+      ```bash
+        $ make px4_sitl gazebo
+      ```
+5. Add the following lines to your .zsh or .bashrc (you may want or need to comment out the python path lines when you are working on other stuff or run those commands every time you launch the simulator rather than adding them to your source file):
       ```bash
         $ export GAZEBO_PLUGIN_PATH=`pwd`:$GAZEBO_PLUGIN_PATH
         $ export PYTHONPATH=$PYTHONPATH:~/(PATH TO YOUR WORKSPACE)/src/listener/scripts
         $ export PYTHONPATH=$PYTHONPATH:~/(PATH TO YOUR WORKSPACE)/src/boat_estimator/scripts/structs
         $ export PYTHONPATH=$PYTHONPATH:~/(PATH TO YOUR WORKSPACE)/src/boat_estimator/params
-      ```
-5. Build the gazebo models and plugins by running this command in the PX4-Autopilot directory:
-    
-      ```bash
-        $ make px4_sitl gazebo
       ```
     
 6. Build your workspace. 
