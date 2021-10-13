@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<!--PX4 to UBLOX with boat-->
+<!--PX4 to UBLOX with boat. Launch file for simulation with boat-->
 <launch>
     <arg name="bag_filename"    value="p2u"/>
     <arg name="compass_relPos"      value="p2u/boat/compass/RelPos"/>

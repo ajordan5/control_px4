@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<!--PX4 to UBLOX -->
+<!--PX4 to UBLOX. Launch file for simulation without boar-->
 <launch>
     <arg name="bag_filename"    value="p2u"/>
     <arg name="compass_relPos"      value="p2u/boat/compass/RelPos"/>
@@ -17,12 +17,21 @@
         <node name="px4_2is" pkg="control_px4" type="pose2is.py" output="screen"/>
     </group>
     
-    <node name="nav" pkg="control_px4" type="nav.py" output="screen">
+    <!--node name="nav" pkg="control_px4" type="nav.py" output="screen">
         <remap from="base2Rover_relPos" to="/p2u/boat/RelPos"/>
         <remap from="posVelEcef" to="/p2u/rover/PosVelEcef"/>
         <remap from="base_posVelEcef" to="/p2u/boat/PosVelEcef"/>
         <remap from="compass_relPos" to="$(arg compass_relPos)"/>
-    </node>
+    </node-->
+    <include file="$(find boat_estimator)/launch/standard.launch">
+        <arg name="boat_imu"            value="/base/imu"/>
+        <arg name="base_2_rover_relPos" value="/p2u/rover/RelPos"/>
+        <arg name="rover_PosVelEcef"    value="/p2u/rover/PosVelEcef"/>
+        <arg name="boat_PosVelEcef"     value="/p2u//base/PosVelEcef"/>
+        <arg name="compass_relPos"      value="/p2u/base/compass/RelPos"/>
+        <arg name="params_file"         value="params"/>
+    </include>
+    
     <include file="$(find control_px4)/launch/include/control_px4.launch"/>
     <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/boatLanding_sim/$(arg bag_filename).bag --all"/>
 </launch>
