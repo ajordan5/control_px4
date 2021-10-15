@@ -31,7 +31,7 @@ class Pose2Ublox_Ros():
         self.base_virtual_PosVelEcef_pub_ = rospy.Publisher('base/PosVelEcef', PosVelEcef, queue_size=5, latch=True)
         
         # Timer: periodically calls the provided callback
-        self.ublox_rate_timer_ = rospy.Ti mer(rospy.Duration(self.Ts), self.ubloxRateCallback)
+        self.ublox_rate_timer_ = rospy.Timer(rospy.Duration(self.Ts), self.ubloxRateCallback)
     
     def ubloxRateCallback(self, event):
         # may need to replace this if the boat is working again.

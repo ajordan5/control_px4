@@ -7,6 +7,7 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import Vector3Stamped
 from nav_msgs.msg import Odometry
+from mavsdk.offboard import VelocityNedYaw
 from ublox.msg import RelPos
 from ublox.msg import PosVelEcef
 from std_msgs.msg import Bool
@@ -39,7 +40,7 @@ class StateMachine:
                               #2 - descend
                               #3 - land
         self.waypoints = rospy.get_param('~waypoints', [[0.0,0.0,-2.0]])
-        self.hlc = Odometry()
+        self.hlc = Odometry() #VelocityNedYaw(0.0, 0.0, 0.0, 0.0)
         self.antennaOffset = rospy.get_param('~antennaOffset', [0.0,0.0,0.0])
 
         self.missionThreshold = rospy.get_param('~missionThreshold', 0.3)
@@ -60,13 +61,22 @@ class StateMachine:
         self.hlcMsg = PoseStamped()
         self.beginLandingRoutineMsg = Bool()
         # hlc: high level command
+        self.position_kp = np.array([3, 3, 2])
+        self.landing_kp = np.array([3, 3, 20])
         self.hlc_pub_ = rospy.Publisher('hlc',Odometry,queue_size=5,latch=True)
         self.begin_landing_routine_pub_ = rospy.Publisher('begin_landing_routine',Bool,queue_size=5,latch=True)
         self.odom_sub_ = rospy.Subscriber('rover_odom',Odometry,self.odomCallback, queue_size=5)
         self.base_odom_sub_ = rospy.Subscriber('base_odom',Odometry,self.baseOdomCallback, queue_size=5)
 
+        # Subscribe to base pose from Gazebo to check waypoint
+        self.base_sim_ned_sub_ = rospy.Subscriber('/base_pose', PoseStamped, self.baseNedCallback, queue_size=5)
+        self.base_true = np.array([0, 0, 0])
+
         while not rospy.is_shutdown():
             rospy.spin()
+
+    def baseNedCallback(self, msg):
+        self.base_true = np.array([msg.pose.position.x, msg.pose.position.y, msg.pose.position.z])
 
     def odomCallback(self,msg):
         self.odom = [msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z]
@@ -85,15 +95,15 @@ class StateMachine:
         """Update high level command"""
         # Problem w flying mission outdoors. Basing control on body fixed frame for drone
         if self.missionState == 1:
-            commands = self.rendevous()
+            commands = self.takeoff() #self.rendevous()
         elif self.missionState == 2:
-            commands = self.descend()
+            commands = self.landtest() #self.descend()
         elif self.missionState == 3:
             commands = self.land()
         else:
+            commands = self.takeoff()
             #commands = self.rendevous()
-            commands = self.fly_mission()
-
+            #commands = self.fly_mission()
         self.publish_hlc(commands)
 
     
@@ -114,23 +124,50 @@ class StateMachine:
                 self.currentWaypointIndex -=1
         return [currentWaypoint,[0.0,0.0,0.0]]
     
+    def takeoff(self):
+        # Test method for takeoff to 2m with velocity control
+        error = np.zeros(3)
+        error[2] = -7 - np.array(self.odom)[2] 
+        velocityCommand = self.position_kp * error
+        if np.linalg.norm(error) < self.rendevousThreshold:
+            print("landing")
+            self.missionState = 2
+        #print(velocityCommand)
+        return velocityCommand
+    
+    def landtest(self):
+        # Test method for landing from 2m with velocity control
+        error = np.zeros(3)
+        error[2] = -np.array(self.odom)[2]
+        velocityCommand = self.landing_kp * error
+        if np.linalg.norm(error) < 0.1 * self.rendevousThreshold:
+            print("landed")
+        return velocityCommand
+    
     def rendevous(self):
         # Rb2i takes the vector from the antenna to the center of the pad and converts body to inertial frame
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
+
+        # Use error to calculate a desired velocity, add the velocity of the boat
+        velocityCommand = self.position_kp * error + self.feedForwardVelocity
         # Waypoint position is the current vehicle position plus the error
         currentWaypoint = error + np.array(self.odom)
-        #print('error=', error, np.linalg.norm(error))
+        #print(self.base_true, currentWaypoint, self.Rb2i.apply(np.array(self.antennaOffset)))
         if np.linalg.norm(error) < self.rendevousThreshold:
             self.missionState = 2
             print('descend state')
             print('rover2Base = ', self.rover2BaseRelPos)
             print('odom = ', self.odom)
             print('error=', error, np.linalg.norm(error))
-        return [currentWaypoint,self.feedForwardVelocity]
+        print(velocityCommand)
+        return velocityCommand
+        #return [currentWaypoint,self.feedForwardVelocity]
 
     def descend(self):
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.landingHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
         currentWaypoint = error + np.array(self.odom)
+        # Use error to calculate a desired velocity, add the velocity of the boat
+        velocityCommand = self.position_kp * error + self.feedForwardVelocity
         euler = self.Rb2i.as_euler('xyz')
         baseXYAttitude = euler[0:1]
         if np.linalg.norm(error) < self.landingThreshold and np.linalg.norm(baseXYAttitude) < self.baseXYAttitudeThreshold:
@@ -139,24 +176,22 @@ class StateMachine:
             print('rover2Base = ', self.rover2BaseRelPos)
             print('odom = ', self.odom)
             print('error=', error, np.linalg.norm(error))
-        return [currentWaypoint,self.feedForwardVelocity]
+        return velocityCommand
 
     def land(self):
         # Set the waypoint to 5 meters below the landing pad
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,5.0]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        # Use error to calculate a desired velocity, add the velocity of the boat
+        velocityCommand = self.position_kp * error + self.feedForwardVelocity
         currentWaypoint = error + np.array(self.odom) #multirotor attemptes to drive itself into the platform 5 meters deep.
-        print('error=', error, np.linalg.norm(error))
-        return [currentWaypoint,self.feedForwardVelocity]
+        return velocityCommand
 
     def publish_hlc(self,commands):
-        # Publish the current waypoint
-        self.hlc.pose.pose.position.x = commands[0][0]
-        self.hlc.pose.pose.position.y = commands[0][1]
-        self.hlc.pose.pose.position.z = commands[0][2]
+       
         # Publish the base velocity for a feedforward term in the control
-        self.hlc.twist.twist.linear.x = commands[1][0]
-        self.hlc.twist.twist.linear.y = commands[1][1]
-        self.hlc.twist.twist.linear.z = commands[1][2]
+        self.hlc.twist.twist.linear.x = commands[0]
+        self.hlc.twist.twist.linear.y = commands[1]
+        self.hlc.twist.twist.linear.z = commands[2]
         self.hlc.header.stamp = rospy.Time.now()
         self.hlc_pub_.publish(self.hlc)
 

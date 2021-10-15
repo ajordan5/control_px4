@@ -5,10 +5,11 @@ state_machine: {
               #[10.0,10.0,-10.0]],
   missionThreshold: 0.3,
   rendevousThreshold: 0.1,
-  rendevousHeight: -1.0,
+  rendevousHeight: -2.0,
   landingHeight: -0.35,
   landingThreshold: 0.1,
   baseXYAttitudeThreshold: 10.0,
   autoLand: True,
   cyclicalPath: False,
+  #antennaOffset: [1.0, 1.0, 0],
 }

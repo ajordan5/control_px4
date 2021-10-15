@@ -39,9 +39,6 @@ class CntrlPx4:
         
     def commandsCallback(self,msg):
         """Callback mechanism invoked each time an Odometry msg is received on the commands topic"""
-        self.positionCommands.north_m = msg.pose.pose.position.x
-        self.positionCommands.east_m = msg.pose.pose.position.y
-        self.positionCommands.down_m = msg.pose.pose.position.z
         self.feedForwardVelocity.north_m_s = msg.twist.twist.linear.x
         self.feedForwardVelocity.east_m_s = msg.twist.twist.linear.y
         self.feedForwardVelocity.down_m_s = msg.twist.twist.linear.z
@@ -132,6 +129,7 @@ class CntrlPx4:
             #await drone.action.start_mission()
             await drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
             await drone.offboard.start()
+            
             print("Simulation starting offboard.")
 
         #TODO publish all of these messages, so that rosbags contain this information
@@ -176,7 +174,7 @@ class CntrlPx4:
                 # Send vision position estimate from mocap to mavsdk
                 await drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
-            await drone.offboard.set_position_velocity_ned(self.positionCommands,self.feedForwardVelocity)
+            await drone.offboard.set_velocity_ned(self.feedForwardVelocity)
 
     async def print_status(self,drone):
         async for status in drone.telemetry.status_text():
