@@ -96,100 +96,48 @@ class StateMachine:
         """Update high level command"""
         # Problem w flying mission outdoors. Basing control on body fixed frame for drone
         if self.missionState == 1:
-            commands = self.rendevous()
+            commands = self.takeoff()
         elif self.missionState == 2:
             commands = self.descend()
         elif self.missionState == 3:
-            commands = self.land()
+            commands = self.landtest()
         else:
-            #commands = self.takeoff()
-            commands = self.rendevous()
-            #commands = self.fly_mission()
+            commands = self.takeoff()
         self.publish_hlc(commands)
-
-    
-    def fly_mission(self):
-        currentWaypoint = self.waypoints[self.currentWaypointIndex]
-        error = np.linalg.norm(np.array(currentWaypoint)-np.array(self.odom))
-        velocityCommand = self.position_kp * (np.array(currentWaypoint) - np.array(self.odom))
-        print(currentWaypoint, self.roverNed)
-        if error < self.missionThreshold:
-            print('reached waypoint ', self.currentWaypointIndex + 1)
-            self.currentWaypointIndex += 1
-            if self.currentWaypointIndex == len(self.waypoints) and self.autoLand == True:
-                self.missionState = 1
-                print('rendevous state')
-                self.beginLandingRoutineMsg.data = True
-                self.begin_landing_routine_pub_.publish(self.beginLandingRoutineMsg)
-            if self.cyclicalPath:
-                self.currentWaypointIndex %= len(self.waypoints)            
-            elif self.currentWaypointIndex == len(self.waypoints):
-                self.currentWaypointIndex -=1
-        #print(velocityCommand)
-        return velocityCommand
     
     def takeoff(self):
         # Test method for takeoff to 2m with velocity control
+        hgt = self.boatNed[2] + self.rendevousHeight
         error = np.zeros(3)
-        error[2] = -2 - np.array(self.odom)[2] 
+        error[2] = hgt - np.array(self.odom)[2] 
         velocityCommand = self.position_kp * error
         if np.linalg.norm(error) < self.rendevousThreshold:
-            print("landing")
+            print("descend mode")
             self.missionState = 2
         #print(velocityCommand)
         return velocityCommand
     
+    def descend(self):
+        # Test method for landing from 2m with velocity control
+        error = np.zeros(3)
+        hgt = self.boatNed[2] + self.landingHeight
+        error[2] = hgt -np.array(self.odom)[2]
+        velocityCommand = self.landing_kp * error
+        if np.linalg.norm(error) < 0.1 * self.rendevousThreshold:
+            print("land mode")
+            self.missionState = 3
+        return velocityCommand
+
     def landtest(self):
         # Test method for landing from 2m with velocity control
         error = np.zeros(3)
         error[2] = -np.array(self.odom)[2]
         velocityCommand = self.landing_kp * error
         if np.linalg.norm(error) < 0.1 * self.rendevousThreshold:
-            print("landed, taking off")
-            self.missionState = 1
-        return velocityCommand
-    
-    def rendevous(self):
-        # Rb2i takes the vector from the antenna to the center of the pad and converts body to inertial frame
-        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
-
-        # Use error to calculate a desired velocity, add the velocity of the boat
-        velocityCommand = self.position_kp * error + self.feedForwardVelocity
-        # Waypoint position is the current vehicle position plus the error
-        currentWaypoint = error + np.array(self.odom)
-        #print(self.base_true, currentWaypoint, self.Rb2i.apply(np.array(self.antennaOffset)))
-        if np.linalg.norm(error) < self.rendevousThreshold:
-            self.missionState = 2
-            print('descend state')
-            print('rover2Base = ', self.rover2BaseRelPos)
-            print('odom = ', self.odom)
-            print('error=', error, np.linalg.norm(error))
-        #print(velocityCommand)
-        return velocityCommand
-        #return [currentWaypoint,self.feedForwardVelocity]
-
-    def descend(self):
-        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.landingHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
-        currentWaypoint = error + np.array(self.odom)
-        # Use error to calculate a desired velocity, add the velocity of the boat
-        velocityCommand = self.position_kp * error + self.feedForwardVelocity
-        euler = self.Rb2i.as_euler('xyz')
-        baseXYAttitude = euler[0:1]
-        if np.linalg.norm(error) < self.landingThreshold and np.linalg.norm(baseXYAttitude) < self.baseXYAttitudeThreshold:
-            self.missionState = 3
-            print('land state')
-            print('rover2Base = ', self.rover2BaseRelPos)
-            print('odom = ', self.odom)
-            print('error=', error, np.linalg.norm(error))
-        return velocityCommand
-
-    def land(self):
-        # Set the waypoint to 5 meters below the landing pad
-        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,5.0]) + self.Rb2i.apply(np.array(self.antennaOffset))
-        # Use error to calculate a desired velocity, add the velocity of the boat
-        velocityCommand = self.position_kp * error + self.feedForwardVelocity
-        currentWaypoint = error + np.array(self.odom) #multirotor attemptes to drive itself into the platform 5 meters deep.
-        return velocityCommand
+            print("landed")
+            velocityCommand = np.zeros(3)
+        #velocityCommand[2] = 2.0
+        return velocityCommand         
 
     def publish_hlc(self,commands):
        
