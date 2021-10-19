@@ -97,8 +97,9 @@ class CntrlPx4:
        self.estimateMsg.twist.twist.angular.y = odom.angular_velocity_body.pitch_rad_s
        self.estimateMsg.twist.twist.angular.z = odom.angular_velocity_body.yaw_rad_s
        self.estimateMsg.twist.covariance = self.convert_px4_covariance_to_ros_covariance(odom.velocity_covariance.covariance_matrix)
-
+    
        self.estimate_pub_.publish(self.estimateMsg)
+       #print(self.estimateMsg)
 
     def convert_px4_covariance_to_ros_covariance(self,px4Cov):
        rosCov = [0]*36
@@ -130,6 +131,7 @@ class CntrlPx4:
         #TODO publish all of these messages, so that rosbags contain this information
         await drone.telemetry.set_rate_odometry(100)
         asyncio.ensure_future(self.input_meas_output_est(drone))
+        
         asyncio.ensure_future(self.flight_modes(drone))
         # await drone.telemetry.set_rate_attitude(1) #doesn't seem to affect euler?
         # asyncio.ensure_future(self.print_euler(drone))
@@ -163,12 +165,17 @@ class CntrlPx4:
                 self.publish_flight_mode()
 
     async def input_meas_output_est(self,drone):
+        #print("called")
         async for odom in drone.telemetry.odometry():
+            #print(odom)
             self.publish_estimate(odom)
             if self.mocap and self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
+                #print(self.pose)
             await drone.offboard.set_position_velocity_ned(self.positionCommands,self.feedForwardVelocity)
+            #print("pose command", self.positionCommands)
+            #print("vel command", self.feedForwardVelocity)
 
     async def print_status(self,drone):
         async for status in drone.telemetry.status_text():

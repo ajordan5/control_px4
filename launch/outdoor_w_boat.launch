@@ -3,8 +3,10 @@
 <launch>
     <arg name="bag_filename"            value="outdoor_w_boat"/>
     <arg name="rover_serial_port"       value="/dev/ttyACM0"/>
-    <arg name="base_host"               value="192.168.0.143"/>
-    <arg name="rover_host"              value="192.168.0.57"/> 
+    <!--arg name="base_host"               value="192.168.1.116"/> 
+    <arg name="rover_host"              value="192.168.1.72"/--> <!--Mocap Ips-->
+    <arg name="base_host"               value="192.168.0.71"/> 
+    <arg name="rover_host"              value="192.168.0.72"/> <!--Boat landing router Ips-->
     <arg name="posVelEcef"              value="/rover/PosVelEcef"/>
     <arg name="base2rover_relPos"       value="/rover/RelPos"/>
     <arg name="base_posVelEcef"         value="/base/PosVelEcef"/>
@@ -27,5 +29,5 @@
     </include>
  
     <include file="$(find control_px4)/launch/include/control_px4.launch"/>
-    <node pkg="rosbag" type="record" name="record" output="screen" args="-O ../data/outdoor/$(arg bag_filename).bag --all"/>
+    <node pkg="rosbag" type="record" name="record" output="screen" args="-o ../data/outdoor/$(arg bag_filename).bag --all"/>
 </launch>

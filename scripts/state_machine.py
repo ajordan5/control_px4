@@ -80,6 +80,7 @@ class StateMachine:
             #commands = self.fly_mission()
 
         self.publish_hlc(commands)
+        #print(self.missionState)
 
     def fly_mission(self):
         currentWaypoint = self.waypoints[self.currentWaypointIndex]
@@ -101,7 +102,10 @@ class StateMachine:
 
     def rendevous(self):
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        #print(self.odom)
         currentWaypoint = error + np.array(self.odom)
+        xyError = np.sqrt(error[0]**2 + error[1]**2)
+        #print(error)
         if np.linalg.norm(error) < self.rendevousThreshold:
             self.missionState = 2
             self.publish_mission_state()
