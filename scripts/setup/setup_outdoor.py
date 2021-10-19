@@ -81,7 +81,7 @@ async def run():
     # Land limit below 2m
     land_rate = await drone.param.get_param_float('MPC_LAND_SPEED')
     print("land rate =", land_rate)
-    await drone.param.set_param_float('MPC_LAND_SPEED', 2.0)
+    await drone.param.set_param_float('MPC_LAND_SPEED', 1.0)
     land_rate = await drone.param.get_param_float('MPC_LAND_SPEED')
     print("land rate =", land_rate)
     
