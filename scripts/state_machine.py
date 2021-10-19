@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
+from numpy.core.defchararray import array
 import rospy
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Point
@@ -61,8 +62,8 @@ class StateMachine:
         self.hlcMsg = PoseStamped()
         self.beginLandingRoutineMsg = Bool()
         # hlc: high level command
-        self.position_kp = np.array([3, 3, 2])
-        self.landing_kp = np.array([3, 3, 20])
+        self.position_kp = np.array([.95, .95, 1])
+        self.landing_kp = np.array([.95, .95, 1])
         self.hlc_pub_ = rospy.Publisher('hlc',Odometry,queue_size=5,latch=True)
         self.begin_landing_routine_pub_ = rospy.Publisher('begin_landing_routine',Bool,queue_size=5,latch=True)
         self.odom_sub_ = rospy.Subscriber('rover_odom',Odometry,self.odomCallback, queue_size=5)
@@ -95,14 +96,14 @@ class StateMachine:
         """Update high level command"""
         # Problem w flying mission outdoors. Basing control on body fixed frame for drone
         if self.missionState == 1:
-            commands = self.takeoff() #self.rendevous()
+            commands = self.rendevous()
         elif self.missionState == 2:
-            commands = self.landtest() #self.descend()
+            commands = self.descend()
         elif self.missionState == 3:
             commands = self.land()
         else:
-            commands = self.takeoff()
-            #commands = self.rendevous()
+            #commands = self.takeoff()
+            commands = self.rendevous()
             #commands = self.fly_mission()
         self.publish_hlc(commands)
 
@@ -110,6 +111,8 @@ class StateMachine:
     def fly_mission(self):
         currentWaypoint = self.waypoints[self.currentWaypointIndex]
         error = np.linalg.norm(np.array(currentWaypoint)-np.array(self.odom))
+        velocityCommand = self.position_kp * (np.array(currentWaypoint) - np.array(self.odom))
+        print(currentWaypoint, self.roverNed)
         if error < self.missionThreshold:
             print('reached waypoint ', self.currentWaypointIndex + 1)
             self.currentWaypointIndex += 1
@@ -122,12 +125,13 @@ class StateMachine:
                 self.currentWaypointIndex %= len(self.waypoints)            
             elif self.currentWaypointIndex == len(self.waypoints):
                 self.currentWaypointIndex -=1
-        return [currentWaypoint,[0.0,0.0,0.0]]
+        #print(velocityCommand)
+        return velocityCommand
     
     def takeoff(self):
         # Test method for takeoff to 2m with velocity control
         error = np.zeros(3)
-        error[2] = -7 - np.array(self.odom)[2] 
+        error[2] = -2 - np.array(self.odom)[2] 
         velocityCommand = self.position_kp * error
         if np.linalg.norm(error) < self.rendevousThreshold:
             print("landing")
@@ -141,7 +145,8 @@ class StateMachine:
         error[2] = -np.array(self.odom)[2]
         velocityCommand = self.landing_kp * error
         if np.linalg.norm(error) < 0.1 * self.rendevousThreshold:
-            print("landed")
+            print("landed, taking off")
+            self.missionState = 1
         return velocityCommand
     
     def rendevous(self):
@@ -159,7 +164,7 @@ class StateMachine:
             print('rover2Base = ', self.rover2BaseRelPos)
             print('odom = ', self.odom)
             print('error=', error, np.linalg.norm(error))
-        print(velocityCommand)
+        #print(velocityCommand)
         return velocityCommand
         #return [currentWaypoint,self.feedForwardVelocity]
 
