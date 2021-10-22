@@ -154,7 +154,7 @@ class StateMachine:
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
 
         # Use error to calculate a desired velocity, add the velocity of the boat
-        print(error, self.antennaOffset)
+        #print(self.rover2BaseRelPos)
         velocityCommand = self.position_kp * error + self.feedForwardVelocity
         # Waypoint position is the current vehicle position plus the error
         currentWaypoint = error + np.array(self.odom)
