@@ -62,8 +62,8 @@ class StateMachine:
         self.hlcMsg = PoseStamped()
         self.beginLandingRoutineMsg = Bool()
         # hlc: high level command
-        self.position_kp = np.array([.95, .95, 1])
-        self.landing_kp = np.array([.95, .95, 1])
+        self.position_kp = np.array(rospy.get_param('~positionKp', [0.95, 0.95, 1]))
+        self.landing_kp = np.array(rospy.get_param('~landingKp', [0.95, 0.95, 1]))
         self.hlc_pub_ = rospy.Publisher('hlc',Odometry,queue_size=5,latch=True)
         self.begin_landing_routine_pub_ = rospy.Publisher('begin_landing_routine',Bool,queue_size=5,latch=True)
         self.odom_sub_ = rospy.Subscriber('rover_odom',Odometry,self.odomCallback, queue_size=5)
@@ -187,7 +187,7 @@ class StateMachine:
         # Set the waypoint to 5 meters below the landing pad
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,5.0]) + self.Rb2i.apply(np.array(self.antennaOffset))
         # Use error to calculate a desired velocity, add the velocity of the boat
-        velocityCommand = self.position_kp * error + self.feedForwardVelocity
+        velocityCommand = self.landing_kp * error + self.feedForwardVelocity
         currentWaypoint = error + np.array(self.odom) #multirotor attemptes to drive itself into the platform 5 meters deep.
         return velocityCommand
 

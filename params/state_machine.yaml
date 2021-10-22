@@ -11,5 +11,7 @@ state_machine: {
   baseXYAttitudeThreshold: 10.0,
   autoLand: True,
   cyclicalPath: False,
+  positionKp: [1.35, 1.35, 1],
+  landingKp: [1.5, 1.5, 1], 
   #antennaOffset: [1.0, 1.0, 0],
 }
