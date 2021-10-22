@@ -3,8 +3,8 @@
 <launch>
     <arg name="bag_filename"            value="outdoor_w_boat"/>
     <arg name="rover_serial_port"       value="/dev/ttyACM0"/>
-    <arg name="base_host"               value="192.168.0.143"/>
-    <arg name="rover_host"              value="192.168.0.57"/> 
+    <arg name="base_host"               value="192.168.0.71"/>
+    <arg name="rover_host"              value="192.168.0.72"/> 
     <arg name="posVelEcef"              value="/rover/PosVelEcef"/>
     <arg name="base2rover_relPos"       value="/rover/RelPos"/>
     <arg name="base_posVelEcef"         value="/boat/PosVelEcef"/>
@@ -19,7 +19,7 @@
 
     <include file="$(find boat_estimator)/launch/standard.launch">
         <arg name="boat_imu"            value="/base/imu"/>
-        <arg name="base_2_rover_relPos" value="$(arg base2Rover_relPos)"/>
+        <arg name="base_2_rover_relPos" value="$(arg base2rover_relPos)"/>
         <arg name="rover_PosVelEcef"    value="$(arg posVelEcef)"/>
         <arg name="boat_PosVelEcef"     value="$(arg base_posVelEcef)"/>
         <arg name="compass_relPos"      value="$(arg compass_relPos)"/>
