@@ -71,6 +71,19 @@ async def run():
     declination = await drone.param.get_param_float('ATT_MAG_DECL')
     print('declination = ', declination)
 
+    print("Setting landing speed")
+    land = await drone.param.get_param_float('MPC_LAND_SPEED')
+    print('landing speed below 2m = ', land)
+    await drone.param.set_param_float('MPC_LAND_SPEED',1)#0)
+    land = await drone.param.get_param_float('MPC_LAND_SPEED')
+    print('landing speed below 2m = ', land)
+    
+    desc = await drone.param.get_param_float('MPC_Z_VEL_MAX_DN')
+    print('Descending speed below 5m = ', desc)
+    await drone.param.set_param_float('MPC_Z_VEL_MAX_DN',1)
+    desc = await drone.param.get_param_float('MPC_Z_VEL_MAX_DN')
+    print('Descending speed below 5m = ', desc)
+    
     print('If changes were made to these params, a reboot is necessary.')
 
 

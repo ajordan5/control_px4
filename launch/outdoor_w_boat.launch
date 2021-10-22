@@ -6,7 +6,7 @@
     <arg name="base_host"               value="192.168.0.71"/>
     <arg name="rover_host"              value="192.168.0.72"/> 
     <arg name="posVelEcef"              value="/rover/PosVelEcef"/>
-    <arg name="base2Rover_relPos"       value="/rover/RelPos"/>
+    <arg name="base2rover_relPos"       value="/rover/RelPos"/>
     <arg name="base_posVelEcef"         value="/boat/PosVelEcef"/>
     <arg name="compass_relPos"          value="/boat/compass/RelPos"/>
     <arg name="base_estimator_params"   value="params"/>
