@@ -18,8 +18,7 @@ from geometry_msgs.msg import PointStamped
 
 class CntrlPx4:
     def __init__(self):
-        self.positionCommands = PositionNedYaw(0.0,0.0,0.0,0.0)
-        self.feedForwardVelocity = VelocityNedYaw(0.0,0.0,0.0,0.0)
+        self.velocityCommand = VelocityNedYaw(0.0,0.0,0.0,0.0)
         self.prevPoseTime = 0.0
         self.estimateMsg = Odometry()
         self.meas1_received = False
@@ -41,12 +40,9 @@ class CntrlPx4:
             self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseStamped, self.positionMeasurementCallback, queue_size=5)
         
     def commandsCallback(self,msg):
-        self.positionCommands.north_m = msg.pose.pose.position.x
-        self.positionCommands.east_m = msg.pose.pose.position.y
-        self.positionCommands.down_m = msg.pose.pose.position.z
-        self.feedForwardVelocity.north_m_s = msg.twist.twist.linear.x
-        self.feedForwardVelocity.east_m_s = msg.twist.twist.linear.y
-        self.feedForwardVelocity.down_m_s = msg.twist.twist.linear.z
+        self.velocityCommand.north_m_s = msg.twist.twist.linear.x
+        self.velocityCommand.east_m_s = msg.twist.twist.linear.y
+        self.velocityCommand.down_m_s = msg.twist.twist.linear.z
 
     def positionMeasurementCallback(self,msg):
        time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
@@ -165,17 +161,12 @@ class CntrlPx4:
                 self.publish_flight_mode()
 
     async def input_meas_output_est(self,drone):
-        #print("called")
         async for odom in drone.telemetry.odometry():
-            #print(odom)
             self.publish_estimate(odom)
             if self.mocap and self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
-                #print(self.pose)
-            await drone.offboard.set_position_velocity_ned(self.positionCommands,self.feedForwardVelocity)
-            #print("pose command", self.positionCommands)
-            #print("vel command", self.feedForwardVelocity)
+            await drone.offboard.set_velocity_ned(self.velocityCommand)
 
     async def print_status(self,drone):
         async for status in drone.telemetry.status_text():
