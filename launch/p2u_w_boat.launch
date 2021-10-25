@@ -8,14 +8,14 @@
     <group ns="p2u">
         <rosparam command="load" file="$(find control_px4)/params/px4_2ublox.yaml"/>
         <node name="px4_2ublox" pkg="control_px4" type="px4_2ublox.py" output="screen">
-            <remap from="/rover_pose" to="/gazebo_rover_pose"/>
-            <remap from="/base_pose" to="/gazebo_base_pose"/>
+            <!--remap from="/rover_pose" to="/gazebo_rover_pose"/>
+            <remap from="/base_pose" to="/gazebo_base_pose"/-->
         </node>
     </group>
 
     <group ns="p2i">
         <node name="px4_2is" pkg="control_px4" type="pose2is.py" output="screen">
-            <remap from="/base_pose" to="/gazebo_base_pose"/>
+            <!--remap from="/base_pose" to="/gazebo_base_pose"/-->
         </node>
     </group>
 

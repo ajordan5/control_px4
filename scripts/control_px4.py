@@ -115,14 +115,30 @@ class CntrlPx4:
     async def run(self):
         drone = System()
         print('system address = ', self.systemAddress)
-        await drone.connect(system_address=self.systemAddress)
+        if self.sim == True:
+            print("Running in Sim")
+            await drone.connect(system_address="udp://:14540")
+        else:
+            print("Running in Hardware")
+            await drone.connect(system_address=self.systemAddress)
 
         print("Waiting for drone to connect...")
         await asyncio.sleep(5)
         async for state in drone.core.connection_state():
             if state.is_connected:
-                print(f"Drone discovered with UUID: {state.uuid}")
+                #print(f"Drone discovered with UUID: {state.uuid}")
+                print("CONNECTED")
                 break
+        
+        # Setup simulation. This used to be at the bottom of the run function but was not working
+        if self.sim == True:
+            print("ARMING")
+            await drone.action.arm()
+            #await drone.action.start_mission()
+            await drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
+            await drone.offboard.start()
+            
+            print("Simulation starting offboard.")
 
         #TODO publish all of these messages, so that rosbags contain this information
         await drone.telemetry.set_rate_odometry(100)
