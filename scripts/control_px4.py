@@ -14,6 +14,7 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Bool
+from geometry_msgs.msg import PointStamped
 
 class CntrlPx4:
     def __init__(self):
@@ -23,6 +24,7 @@ class CntrlPx4:
         self.estimateMsg = Odometry()
         self.meas1_received = False
         self.flightMode = 'none'
+        self.flightModeRos = PointStamped()
         self.offBoardOn = False
         self.sim = rospy.get_param('~sim', False)
         self.mocap = rospy.get_param('~mocap', False)
@@ -33,6 +35,7 @@ class CntrlPx4:
         else:
             self.systemAddress = rospy.get_param('~realSystemAddress', "serial:///dev/ttyUSB0:921600")          
         self.estimate_pub_ = rospy.Publisher('rover_odom',Odometry,queue_size=5,latch=True)
+        self.flight_mode_pub_ = rospy.Publisher('flight_mode',PointStamped,queue_size=5,latch=True)
         self.commands_sub_ = rospy.Subscriber('commands', Odometry, self.commandsCallback, queue_size=5)
         if self.mocap:
             self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseStamped, self.positionMeasurementCallback, queue_size=5)
@@ -94,8 +97,9 @@ class CntrlPx4:
        self.estimateMsg.twist.twist.angular.y = odom.angular_velocity_body.pitch_rad_s
        self.estimateMsg.twist.twist.angular.z = odom.angular_velocity_body.yaw_rad_s
        self.estimateMsg.twist.covariance = self.convert_px4_covariance_to_ros_covariance(odom.velocity_covariance.covariance_matrix)
-
+    
        self.estimate_pub_.publish(self.estimateMsg)
+       #print(self.estimateMsg)
 
     def convert_px4_covariance_to_ros_covariance(self,px4Cov):
        rosCov = [0]*36
@@ -106,6 +110,11 @@ class CntrlPx4:
        rosCov[28:30] = px4Cov[18:20]
        rosCov[35] = px4Cov[20]
        return rosCov
+
+    def publish_flight_mode(self):
+        self.flightModeRos.header.stamp = rospy.Time.now()
+        self.flightModeRos.point.x = self.flightMode.value
+        self.flight_mode_pub_.publish(self.flightModeRos)
 
     async def run(self):
         drone = System()
@@ -122,6 +131,7 @@ class CntrlPx4:
         #TODO publish all of these messages, so that rosbags contain this information
         await drone.telemetry.set_rate_odometry(100)
         asyncio.ensure_future(self.input_meas_output_est(drone))
+        
         asyncio.ensure_future(self.flight_modes(drone))
         # await drone.telemetry.set_rate_attitude(1) #doesn't seem to affect euler?
         # asyncio.ensure_future(self.print_euler(drone))
@@ -152,14 +162,20 @@ class CntrlPx4:
             if self.flightMode != flight_mode:
                 print("FlightMode:", flight_mode)
                 self.flightMode = flight_mode
+                self.publish_flight_mode()
 
     async def input_meas_output_est(self,drone):
+        #print("called")
         async for odom in drone.telemetry.odometry():
+            #print(odom)
             self.publish_estimate(odom)
             if self.mocap and self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
+                #print(self.pose)
             await drone.offboard.set_position_velocity_ned(self.positionCommands,self.feedForwardVelocity)
+            #print("pose command", self.positionCommands)
+            #print("vel command", self.feedForwardVelocity)
 
     async def print_status(self,drone):
         async for status in drone.telemetry.status_text():

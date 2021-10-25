@@ -129,7 +129,7 @@ class Pose2Ublox():
         self.base_vel_noise_prev = self.base_vel_noise
 
     def update_compass_virtual_relPos(self):
-        euler = R.from_quat(self.compass_quat).as_euler('xyz',degrees=True)
+        euler = R.from_quat(self.compass_quat).as_euler('xyz',degrees=False)
         self.compass_heading = euler[2]
         if self.noise_on:
             self.compass_heading = np.random.normal(self.compass_heading, self.compassing_heading_accuracy)
