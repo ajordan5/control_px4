@@ -102,7 +102,7 @@ class StateMachine:
                 self.currentWaypointIndex %= len(self.waypoints)            
             elif self.currentWaypointIndex == len(self.waypoints):
                 self.currentWaypointIndex -=1
-        return [velocityCommand
+        return velocityCommand
 
     def rendevous(self):
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
