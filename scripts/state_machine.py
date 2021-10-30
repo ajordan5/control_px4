@@ -26,8 +26,10 @@ class StateMachine:
 
         self.missionThreshold = rospy.get_param('~missionThreshold', 0.3)
         self.rendevousThreshold = rospy.get_param('~rendevousThreshold', 0.3)
+        self.rendevousTime = rospy.get_param('~rendevousTime', 0.1)
         self.rendevousHeight = rospy.get_param('~rendevousHeight', -2.0)
         self.landingThreshold = rospy.get_param('~landingThreshold', 0.1)
+        self.landingTime = rospy.get_param('~landingTime', 0.02)
         self.baseXYAttitudeThreshold = rospy.get_param('~baseXYAttitudeThreshold',8.0)
         self.landingHeight = rospy.get_param('~landingHeight', -0.15)
         self.autoLand = rospy.get_param('~autoLand', False)
@@ -49,6 +51,10 @@ class StateMachine:
         # Velocity Control Parameters
         self.position_kp = np.array(rospy.get_param('~positionKp', [0.95, 0.95, 1.0]))
         self.landing_kp = np.array(rospy.get_param('~landingKp', [0.95, 0.95, 1.0]))
+
+        # Mission threshold timing
+        self.in_threshold = False
+        self.threshold_time = 0.0
 
         self.publish_mission_state()
 
@@ -105,12 +111,27 @@ class StateMachine:
         return velocityCommand
 
     def rendevous(self):
+        # Error from desired waypoint
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
         velocityCommand = self.position_kp * error + self.feedForwardVelocity
-        if np.linalg.norm(error) < self.rendevousThreshold:
-            self.missionState = 2
-            self.publish_mission_state()
-            print('descend state')
+        
+        # Entered threshold
+        if np.linalg.norm(error) < self.rendevousThreshold and self.in_threshold == False:
+            self.start_threshold_timer()
+        # Already in threshold
+        elif np.linalg.norm(error) < self.rendevousThreshold and self.in_threshold == True:
+            # Check how long inside threshold
+            self.threshold_timer()
+            if self.threshold_time > self.rendevousTime:
+                self.missionState = 2
+                self.publish_mission_state()
+                print('descend state')
+                self.in_threshold = False
+        # Exited threshold
+        elif np.linalg.norm(error) > self.rendevousThreshold and self.in_threshold == True:
+            self.in_threshold = False
+            print("EXITED THRESHOLD")
+        
         return velocityCommand
 
     def descend(self):
@@ -118,16 +139,42 @@ class StateMachine:
         euler = self.Rb2i.as_euler('xyz')
         baseXYAttitude = euler[0:1]
         velocityCommand = self.position_kp * error + self.feedForwardVelocity
-        if np.linalg.norm(error) < self.landingThreshold and np.linalg.norm(baseXYAttitude) < self.baseXYAttitudeThreshold:
-            self.missionState = 3
-            self.publish_mission_state()
-            print('land state')
+        # Entered threshold
+        if np.linalg.norm(error) < self.landingThreshold and self.in_threshold == False:
+            self.start_threshold_timer()
+        # Already in threshold
+        elif np.linalg.norm(error) < self.landingThreshold and self.in_threshold == True:
+            # Check how long inside threshold
+            self.threshold_timer()
+            if self.threshold_time > self.landingTime:
+                self.missionState = 3
+                self.publish_mission_state()
+                print('land state')
+        # Exited threshold
+        elif np.linalg.norm(error) > self.landingThreshold and self.in_threshold == True:
+            self.in_threshold = False
+            print("EXITED THRESHOLD")
         return velocityCommand
 
     def land(self):
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,5.0]) + self.Rb2i.apply(np.array(self.antennaOffset))
         velocityCommand = self.landing_kp * error + self.feedForwardVelocity
         return velocityCommand
+
+    def threshold_timer(self):
+        """Method to manage the timing of how long the rover has been in the threshold"""
+        computer_time = rospy.Time.now()
+        time = computer_time.secs + computer_time.nsecs * 1E-9
+        self.threshold_time = time - self.threshold_time_start
+        print("TIME IN THRESHOLD:" ,self.threshold_time)
+    
+    def start_threshold_timer(self):
+        """Start timing threshold"""
+        print("ENTERED THRESHOLD")
+        self.in_threshold = True
+        computer_time = rospy.Time.now()
+        self.threshold_time_start = computer_time.secs + computer_time.nsecs * 1E-9
+
 
     def publish_hlc(self,commands):
         self.hlc.twist.twist.linear.x = commands[0]
