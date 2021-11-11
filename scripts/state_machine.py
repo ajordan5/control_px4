@@ -114,6 +114,7 @@ class StateMachine:
         # Error from desired waypoint
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
         errorXY = error[0:2]
+        
         velocityCommand = self.position_kp * error + self.feedForwardVelocity
         
         # Entered threshold
@@ -138,6 +139,7 @@ class StateMachine:
     def descend(self):
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.landingHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
         errorXY = error[0:2]
+        
         euler = self.Rb2i.as_euler('xyz')
         baseXYAttitude = euler[0:1]
         velocityCommand = self.position_kp * error + self.feedForwardVelocity
