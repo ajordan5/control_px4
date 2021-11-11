@@ -113,13 +113,14 @@ class StateMachine:
     def rendevous(self):
         # Error from desired waypoint
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        errorXY = error[0:2]
         velocityCommand = self.position_kp * error + self.feedForwardVelocity
         
         # Entered threshold
-        if np.linalg.norm(error) < self.rendevousThreshold and self.in_threshold == False:
+        if np.linalg.norm(errorXY) < self.rendevousThreshold and self.in_threshold == False:
             self.start_threshold_timer()
         # Already in threshold
-        elif np.linalg.norm(error) < self.rendevousThreshold and self.in_threshold == True:
+        elif np.linalg.norm(errorXY) < self.rendevousThreshold and self.in_threshold == True:
             # Check how long inside threshold
             self.threshold_timer()
             if self.threshold_time > self.rendevousTime:
@@ -128,7 +129,7 @@ class StateMachine:
                 print('descend state')
                 self.in_threshold = False
         # Exited threshold
-        elif np.linalg.norm(error) > self.rendevousThreshold and self.in_threshold == True:
+        elif np.linalg.norm(errorXY) > self.rendevousThreshold and self.in_threshold == True:
             self.in_threshold = False
             print("EXITED THRESHOLD")
         
@@ -136,14 +137,15 @@ class StateMachine:
 
     def descend(self):
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.landingHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        errorXY = error[0:2]
         euler = self.Rb2i.as_euler('xyz')
         baseXYAttitude = euler[0:1]
         velocityCommand = self.position_kp * error + self.feedForwardVelocity
         # Entered threshold
-        if np.linalg.norm(error) < self.landingThreshold and self.in_threshold == False:
+        if np.linalg.norm(errorXY) < self.landingThreshold and self.in_threshold == False:
             self.start_threshold_timer()
         # Already in threshold
-        elif np.linalg.norm(error) < self.landingThreshold and self.in_threshold == True:
+        elif np.linalg.norm(errorXY) < self.landingThreshold and self.in_threshold == True:
             # Check how long inside threshold
             self.threshold_timer()
             if self.threshold_time > self.landingTime:
@@ -151,7 +153,7 @@ class StateMachine:
                 self.publish_mission_state()
                 print('land state')
         # Exited threshold
-        elif np.linalg.norm(error) > self.landingThreshold and self.in_threshold == True:
+        elif np.linalg.norm(errorXY) > self.landingThreshold and self.in_threshold == True:
             self.in_threshold = False
             print("EXITED THRESHOLD")
         return velocityCommand
