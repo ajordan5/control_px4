@@ -157,7 +157,7 @@ class StateMachine:
         return velocityCommand
 
     def land(self):
-        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,5.0]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,0.0]) + self.Rb2i.apply(np.array(self.antennaOffset))
         velocityCommand = self.landing_kp * error + self.feedForwardVelocity
         return velocityCommand
 
