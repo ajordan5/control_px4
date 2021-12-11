@@ -75,6 +75,7 @@ class StateMachine:
         self.feedForwardVelocity[0] = msg.twist.twist.linear.x
         self.feedForwardVelocity[1] = msg.twist.twist.linear.y
         self.feedForwardVelocity[2] = msg.twist.twist.linear.z
+        #print(np.linalg.norm(np.array(self.feedForwardVelocity)))
 
         self.Rb2i = R.from_quat([msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,msg.pose.pose.orientation.z,msg.pose.pose.orientation.w])
     
@@ -114,7 +115,6 @@ class StateMachine:
         # Error from desired waypoint
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
         velocityCommand = self.position_kp * error + self.feedForwardVelocity
-        
         # Entered threshold
         if np.linalg.norm(error) < self.rendevousThreshold and self.in_threshold == False:
             self.start_threshold_timer()
@@ -137,7 +137,8 @@ class StateMachine:
     def descend(self):
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.landingHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
         euler = self.Rb2i.as_euler('xyz')
-        baseXYAttitude = euler[0:1]
+        baseXYAttitude = np.abs(euler[0:2])
+        max_tilt = np.amax(np.degrees(baseXYAttitude))
         velocityCommand = self.position_kp * error + self.feedForwardVelocity
         # Entered threshold
         if np.linalg.norm(error) < self.landingThreshold and self.in_threshold == False:
@@ -146,7 +147,7 @@ class StateMachine:
         elif np.linalg.norm(error) < self.landingThreshold and self.in_threshold == True:
             # Check how long inside threshold
             self.threshold_timer()
-            if self.threshold_time > self.landingTime:
+            if self.threshold_time > self.landingTime and max_tilt < self.baseXYAttitudeThreshold:
                 self.missionState = 3
                 self.publish_mission_state()
                 print('land state')
@@ -157,7 +158,7 @@ class StateMachine:
         return velocityCommand
 
     def land(self):
-        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,0.0]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,0.3]) + self.Rb2i.apply(np.array(self.antennaOffset))
         velocityCommand = self.landing_kp * error + self.feedForwardVelocity
         return velocityCommand
 
