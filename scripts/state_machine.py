@@ -36,6 +36,8 @@ class StateMachine:
         self.cyclicalPath = rospy.get_param('~cyclicalPath', False)
 
         self.roverNed = [0.0,0.0,0.0]
+        self.altitude = 0.0
+        self.ref_altitude = 0.0
         self.boatNed = [0.0,0.0,0.0]
         self.rover2BaseRelPos = [0.0,0.0,0.0]
         self.Rb2i = R.from_quat([0.0,0.0,0.0,1.0]) 
@@ -60,7 +62,7 @@ class StateMachine:
 
         self.odom_sub_ = rospy.Subscriber('rover_odom',Odometry,self.odomCallback, queue_size=5)
         self.base_odom_sub_ = rospy.Subscriber('base_odom',Odometry,self.baseOdomCallback, queue_size=5)
-
+        self.rover_pos_vel_ecef_sub_ = rospy.Subscriber('posVelEcef', PosVelEcef, self.roverPosVelEcefCallback, queue_size=5)
         while not rospy.is_shutdown():
             rospy.spin()
 
@@ -79,6 +81,11 @@ class StateMachine:
 
         self.Rb2i = R.from_quat([msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,msg.pose.pose.orientation.z,msg.pose.pose.orientation.w])
     
+    def roverPosVelEcefCallback(self, msg):
+        latLonAltDegM = msg.lla
+        self.altitude = latLonAltDegM[2]
+        
+
     def update_hlc(self):
         if self.missionState == 1:
             commands = self.rendevous()
@@ -114,12 +121,19 @@ class StateMachine:
     def rendevous(self):
         # Error from desired waypoint
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
-        velocityCommand = self.position_kp * error + self.feedForwardVelocity
         # Entered threshold
         if np.linalg.norm(error) < self.rendevousThreshold and self.in_threshold == False:
             self.start_threshold_timer()
+            # Save the altitude once you first enter the threshold
+            self.ref_altitude = np.copy(self.altitude)
         # Already in threshold
         elif np.linalg.norm(error) < self.rendevousThreshold and self.in_threshold == True:
+            # After entering the threshold, hold altitude and only track laterally
+            diff = self.ref_altitude - self.altitude
+            # Saturate the altitude error in case altitude stops publishing
+            alt_error = np.min((abs(diff), self.rendevousThreshold))
+            error[2] = -np.sign(diff) * alt_error
+
             # Check how long inside threshold
             self.threshold_timer()
             if self.threshold_time > self.rendevousTime:
@@ -132,6 +146,7 @@ class StateMachine:
             self.in_threshold = False
             print("EXITED THRESHOLD")
         
+        velocityCommand = self.position_kp * error + self.feedForwardVelocity
         return velocityCommand
 
     def descend(self):
@@ -143,8 +158,16 @@ class StateMachine:
         # Entered threshold
         if np.linalg.norm(error) < self.landingThreshold and self.in_threshold == False:
             self.start_threshold_timer()
+            # Save the altitude once you first enter the threshold
+            self.ref_altitude = np.copy(self.altitude)
         # Already in threshold
         elif np.linalg.norm(error) < self.landingThreshold and self.in_threshold == True:
+            # After entering the threshold, hold altitude and only track laterally
+            diff = self.ref_altitude - self.altitude
+            # Saturate the altitude error in case altitude stops publishing
+            alt_error = np.min((abs(diff), self.rendevousThreshold))
+            error[2] = -np.sign(diff) * alt_error
+            
             # Check how long inside threshold
             self.threshold_timer()
             if self.threshold_time > self.landingTime and max_tilt < self.baseXYAttitudeThreshold:
