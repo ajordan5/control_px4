@@ -134,7 +134,7 @@ class StateMachine:
             alt_error = np.min((abs(diff), self.rendevousThreshold))
             error[2] = -np.sign(diff) * alt_error
 
-            # Check how long inside threshold
+            # Check how long inside threshold TODO instead of saving threshold time, you could just have the timer return the value
             self.threshold_timer()
             if self.threshold_time > self.rendevousTime:
                 self.missionState = 2
