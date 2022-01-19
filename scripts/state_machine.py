@@ -17,7 +17,7 @@ from scipy.spatial.transform import Rotation as R
 class StateMachine:
     def __init__(self):
         self.missionState = 1 #0 - mission
-                              #1 - rendevous
+                              #1 - rendezvous
                               #2 - descend
                               #3 - land
         self.waypoints = rospy.get_param('~waypoints', [[0.0,0.0,-2.0]])
@@ -25,9 +25,9 @@ class StateMachine:
         self.antennaOffset = rospy.get_param('~antennaOffset', [0.0,0.0,0.0])
 
         self.missionThreshold = rospy.get_param('~missionThreshold', 0.3)
-        self.rendevousThreshold = rospy.get_param('~rendevousThreshold', 0.3)
-        self.rendevousTime = rospy.get_param('~rendevousTime', 0.1)
-        self.rendevousHeight = rospy.get_param('~rendevousHeight', -2.0)
+        self.rendezvousThreshold = rospy.get_param('~rendezvousThreshold', 0.3)
+        self.rendezvousTime = rospy.get_param('~rendezvousTime', 0.1)
+        self.rendezvousHeight = rospy.get_param('~rendezvousHeight', -2.0)
         self.landingThreshold = rospy.get_param('~landingThreshold', 0.1)
         self.landingTime = rospy.get_param('~landingTime', 0.02)
         self.baseXYAttitudeThreshold = rospy.get_param('~baseXYAttitudeThreshold',8.0)
@@ -56,7 +56,6 @@ class StateMachine:
 
         # Mission threshold timing
         self.in_threshold = False
-        self.threshold_time = 0.0
 
         self.publish_mission_state()
 
@@ -88,13 +87,13 @@ class StateMachine:
 
     def update_hlc(self):
         if self.missionState == 1:
-            commands = self.rendevous()
+            commands = self.rendezvous()
         elif self.missionState == 2:
             commands = self.descend()
         elif self.missionState == 3:
             commands = self.land()
         else:
-            commands = self.rendevous()
+            commands = self.rendezvous()
             #commands = self.fly_mission()
 
         self.publish_hlc(commands)
@@ -109,7 +108,7 @@ class StateMachine:
             if self.currentWaypointIndex == len(self.waypoints) and self.autoLand == True:
                 self.missionState = 1
                 self.publish_mission_state()
-                print('rendevous state')
+                print('rendezvous state')
                 self.beginLandingRoutineMsg.data = True
                 self.begin_landing_routine_pub_.publish(self.beginLandingRoutineMsg)
             if self.cyclicalPath:
@@ -118,31 +117,30 @@ class StateMachine:
                 self.currentWaypointIndex -=1
         return velocityCommand
 
-    def rendevous(self):
-        # Error from desired waypoint
-        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendevousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
+    def rendezvous(self):
+        # Error from desired waypoint. Waypoint holds altitude once it has been entered
+        #error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendezvousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        error = self.rendezvousError()
         # Entered threshold
-        if np.linalg.norm(error) < self.rendevousThreshold and self.in_threshold == False:
+        if np.linalg.norm(error) < self.rendezvousThreshold and self.in_threshold == False:
             self.start_threshold_timer()
-            # Save the altitude once you first enter the threshold
-            self.ref_altitude = np.copy(self.altitude)
+            
         # Already in threshold
-        elif np.linalg.norm(error) < self.rendevousThreshold and self.in_threshold == True:
+        elif np.linalg.norm(error) < self.rendezvousThreshold and self.in_threshold == True:
             # After entering the threshold, hold altitude and only track laterally
-            diff = self.ref_altitude - self.altitude
+            """diff = self.ref_altitude - self.altitude
             # Saturate the altitude error in case altitude stops publishing
-            alt_error = np.min((abs(diff), self.rendevousThreshold))
-            error[2] = -np.sign(diff) * alt_error
+            alt_error = np.min((abs(diff), self.rendezvousThreshold))
+            error[2] = -np.sign(diff) * alt_error"""
 
             # Check how long inside threshold TODO instead of saving threshold time, you could just have the timer return the value
-            self.threshold_timer()
-            if self.threshold_time > self.rendevousTime:
+            if self.threshold_timer() > self.rendezvousTime:
                 self.missionState = 2
                 self.publish_mission_state()
                 print('descend state')
                 self.in_threshold = False
         # Exited threshold
-        elif np.linalg.norm(error) > self.rendevousThreshold and self.in_threshold == True:
+        elif np.linalg.norm(error) > self.rendezvousThreshold and self.in_threshold == True:
             self.in_threshold = False
             print("EXITED THRESHOLD")
         
@@ -165,12 +163,11 @@ class StateMachine:
             # After entering the threshold, hold altitude and only track laterally
             diff = self.ref_altitude - self.altitude
             # Saturate the altitude error in case altitude stops publishing
-            alt_error = np.min((abs(diff), self.rendevousThreshold))
+            alt_error = np.min((abs(diff), self.rendezvousThreshold))
             error[2] = -np.sign(diff) * alt_error
             
             # Check how long inside threshold
-            self.threshold_timer()
-            if self.threshold_time > self.landingTime and max_tilt < self.baseXYAttitudeThreshold:
+            if self.threshold_timer() > self.landingTime and max_tilt < self.baseXYAttitudeThreshold:
                 self.missionState = 3
                 self.publish_mission_state()
                 print('land state')
@@ -189,8 +186,9 @@ class StateMachine:
         """Method to manage the timing of how long the rover has been in the threshold"""
         computer_time = rospy.Time.now()
         time = computer_time.secs + computer_time.nsecs * 1E-9
-        self.threshold_time = time - self.threshold_time_start
-        print("TIME IN THRESHOLD:" ,self.threshold_time)
+        timer = time - self.threshold_time_start
+        print("TIME IN THRESHOLD:" ,timer)
+        return timer
     
     def start_threshold_timer(self):
         """Start timing threshold"""
@@ -198,8 +196,21 @@ class StateMachine:
         self.in_threshold = True
         computer_time = rospy.Time.now()
         self.threshold_time_start = computer_time.secs + computer_time.nsecs * 1E-9
+        # Save the altitude once you first enter the threshold
+        self.ref_altitude = np.copy(self.altitude)
 
-
+    def rendezvousError(self):
+        """Manage the error in rendezvous state to keep the waypoint at a steady altitude after entering the threshold"""
+        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendezvousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        if self.in_threshold:
+            # After entering the threshold, hold altitude and only track laterally
+            diff = self.altitude - self.ref_altitude
+            # Saturate the altitude error in case altitude stops publishing
+            alt_error = np.min((abs(diff), self.rendezvousThreshold))
+            error[2] = np.sign(diff) * alt_error
+        
+        return error 
+        
     def publish_hlc(self,commands):
         self.hlc.twist.twist.linear.x = commands[0]
         self.hlc.twist.twist.linear.y = commands[1]
