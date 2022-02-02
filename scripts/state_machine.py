@@ -34,6 +34,7 @@ class StateMachine:
         self.landingHeight = rospy.get_param('~landingHeight', -0.15)
         self.autoLand = rospy.get_param('~autoLand', False)
         self.cyclicalPath = rospy.get_param('~cyclicalPath', False)
+        self.max_descend = rospy.get_param('~maxDescendRate', 5)
 
         self.roverNed = [0.0,0.0,0.0]
         self.altitude = 0.0
@@ -127,12 +128,7 @@ class StateMachine:
             
         # Already in threshold
         elif np.linalg.norm(error) < self.rendezvousThreshold and self.in_threshold == True:
-            # After entering the threshold, hold altitude and only track laterally
-            """diff = self.ref_altitude - self.altitude
-            # Saturate the altitude error in case altitude stops publishing
-            alt_error = np.min((abs(diff), self.rendezvousThreshold))
-            error[2] = -np.sign(diff) * alt_error"""
-
+            
             # Check how long inside threshold TODO instead of saving threshold time, you could just have the timer return the value
             if self.threshold_timer() > self.rendezvousTime:
                 self.missionState = 2
@@ -145,6 +141,7 @@ class StateMachine:
             print("EXITED THRESHOLD")
         
         velocityCommand = self.position_kp * error + self.feedForwardVelocity
+        print(velocityCommand)
         return velocityCommand
 
     def descend(self):
@@ -152,7 +149,8 @@ class StateMachine:
         euler = self.Rb2i.as_euler('xyz')
         baseXYAttitude = np.abs(euler[0:2])
         max_tilt = np.amax(np.degrees(baseXYAttitude))
-        velocityCommand = self.position_kp * error + self.feedForwardVelocity
+        velocityCommand = self.saturate(self.position_kp * error) + self.feedForwardVelocity
+        
         # Entered threshold
         if np.linalg.norm(error) < self.landingThreshold and self.in_threshold == False:
             self.start_threshold_timer()
@@ -179,7 +177,7 @@ class StateMachine:
 
     def land(self):
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,0.2]) + self.Rb2i.apply(np.array(self.antennaOffset))
-        velocityCommand = self.landing_kp * error + self.feedForwardVelocity
+        velocityCommand = self.saturate(self.landing_kp * error) + self.feedForwardVelocity
         return velocityCommand
 
     def threshold_timer(self):
@@ -209,8 +207,14 @@ class StateMachine:
             alt_error = np.min((abs(diff), self.rendezvousThreshold))
             error[2] = np.sign(diff) * alt_error
         
-        return error 
-        
+        return error
+
+    def saturate(self, velocity):
+        """Saturate the velocity to a safe descending speed"""
+        if velocity[2] > self.max_descend:
+            velocity[2] = self.max_descend
+        return velocity
+
     def publish_hlc(self,commands):
         self.hlc.twist.twist.linear.x = commands[0]
         self.hlc.twist.twist.linear.y = commands[1]

@@ -14,5 +14,6 @@ state_machine: {
   autoLand: True,
   cyclicalPath: False,
   positionKp: [.95, .95, 1.0],
-  landingKp: [1.45, 1.45, 1.45],
+  landingKp: [1.25, 1.25, 1.25],
+  maxDescendRate: 0.6,
 }
