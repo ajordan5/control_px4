@@ -5,7 +5,7 @@ state_machine: {
               #[-1.0,-2.0,-1.0]],
   missionThreshold: 0.3,
   rendezvousThreshold: 0.1,
-  rendezvousHeight: -1.0,
+  rendezvousHeight: -2.0,
   rendezvousTime: 0.2,
   landingHeight: -0.45,
   landingThreshold: 0.1,
