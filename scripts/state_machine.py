@@ -26,9 +26,11 @@ class StateMachine:
 
         self.missionThreshold = rospy.get_param('~missionThreshold', 0.3)
         self.rendezvousThreshold = rospy.get_param('~rendezvousThreshold', 0.3)
+        self.rendezvousCylinder = rospy.get_param('~rendezvousCylinder', 0.3)
         self.rendezvousTime = rospy.get_param('~rendezvousTime', 0.1)
         self.rendezvousHeight = rospy.get_param('~rendezvousHeight', -2.0)
         self.landingThreshold = rospy.get_param('~landingThreshold', 0.1)
+        self.landingCylinder = rospy.get_param('~landingCylinder', 0.1)
         self.landingTime = rospy.get_param('~landingTime', 0.02)
         self.baseXYAttitudeThreshold = rospy.get_param('~baseXYAttitudeThreshold',8.0)
         self.landingHeight = rospy.get_param('~landingHeight', -0.15)
@@ -37,8 +39,6 @@ class StateMachine:
         self.max_descend = rospy.get_param('~maxDescendRate', 5)
 
         self.roverNed = [0.0,0.0,0.0]
-        self.altitude = 0.0
-        self.ref_altitude = 0.0
         self.boatNed = [0.0,0.0,0.0]
         self.rover2BaseRelPos = [0.0,0.0,0.0]
         self.Rb2i = R.from_quat([0.0,0.0,0.0,1.0]) 
@@ -56,13 +56,13 @@ class StateMachine:
         self.landing_kp = np.array(rospy.get_param('~landingKp', [0.95, 0.95, 1.0]))
 
         # Mission threshold timing
-        self.in_threshold = False
+        self.in_threshold = False   # Indicates whether the timer has started
+        self.in_cylinder = False    # Indicates whether vehicle is in the spatial threshold regardless of the timer
 
         self.publish_mission_state()
 
         self.odom_sub_ = rospy.Subscriber('rover_odom',Odometry,self.odomCallback, queue_size=5)
         self.base_odom_sub_ = rospy.Subscriber('base_odom',Odometry,self.baseOdomCallback, queue_size=5)
-        self.rover_pos_vel_ecef_sub_ = rospy.Subscriber('posVelEcef', PosVelEcef, self.roverPosVelEcefCallback, queue_size=5)
         while not rospy.is_shutdown():
             rospy.spin()
 
@@ -79,12 +79,7 @@ class StateMachine:
         self.feedForwardVelocity[2] = msg.twist.twist.linear.z
         #print(np.linalg.norm(np.array(self.feedForwardVelocity)))
 
-        self.Rb2i = R.from_quat([msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,msg.pose.pose.orientation.z,msg.pose.pose.orientation.w])
-    
-    def roverPosVelEcefCallback(self, msg):
-        latLonAltDegM = msg.lla
-        self.altitude = latLonAltDegM[2]
-        
+        self.Rb2i = R.from_quat([msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,msg.pose.pose.orientation.z,msg.pose.pose.orientation.w])      
 
     def update_hlc(self):
         if self.missionState == 1:
@@ -119,15 +114,14 @@ class StateMachine:
         return velocityCommand
 
     def rendezvous(self):
-        # Error from desired waypoint. Waypoint holds altitude once it has been entered
-        #error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendezvousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        # Error from desired waypoint. Determine if vehicle is within a cylinder around waypoint
         error = self.rendezvousError()
+
         # Entered threshold
-        if np.linalg.norm(error) < self.rendezvousThreshold and self.in_threshold == False:
-            self.start_threshold_timer()
-            
+        if self.in_cylinder and self.in_threshold == False:
+            self.start_threshold_timer()  
         # Already in threshold
-        elif np.linalg.norm(error) < self.rendezvousThreshold and self.in_threshold == True:
+        elif self.in_cylinder and self.in_threshold == True:
             
             # Check how long inside threshold TODO instead of saving threshold time, you could just have the timer return the value
             if self.threshold_timer() > self.rendezvousTime:
@@ -135,34 +129,28 @@ class StateMachine:
                 self.publish_mission_state()
                 print('descend state')
                 self.in_threshold = False
+                self.in_cylinder = False
         # Exited threshold
-        elif np.linalg.norm(error) > self.rendezvousThreshold and self.in_threshold == True:
+        elif not self.in_cylinder and self.in_threshold == True:
             self.in_threshold = False
             print("EXITED THRESHOLD")
         
         velocityCommand = self.position_kp * error + self.feedForwardVelocity
-        print(velocityCommand)
+        #print(velocityCommand)
         return velocityCommand
 
     def descend(self):
-        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.landingHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        error = self.descendError()
         euler = self.Rb2i.as_euler('xyz')
         baseXYAttitude = np.abs(euler[0:2])
         max_tilt = np.amax(np.degrees(baseXYAttitude))
         velocityCommand = self.saturate(self.position_kp * error) + self.feedForwardVelocity
         
         # Entered threshold
-        if np.linalg.norm(error) < self.landingThreshold and self.in_threshold == False:
+        if self.in_cylinder and self.in_threshold == False:
             self.start_threshold_timer()
-            # Save the altitude once you first enter the threshold
-            self.ref_altitude = np.copy(self.altitude)
         # Already in threshold
-        elif np.linalg.norm(error) < self.landingThreshold and self.in_threshold == True:
-            # After entering the threshold, hold altitude and only track laterally
-            diff = self.ref_altitude - self.altitude
-            # Saturate the altitude error in case altitude stops publishing
-            alt_error = np.min((abs(diff), self.rendezvousThreshold))
-            error[2] = -np.sign(diff) * alt_error
+        elif self.in_cylinder and self.in_threshold == True:
             
             # Check how long inside threshold
             if self.threshold_timer() > self.landingTime and max_tilt < self.baseXYAttitudeThreshold:
@@ -170,12 +158,13 @@ class StateMachine:
                 self.publish_mission_state()
                 print('land state')
         # Exited threshold
-        elif np.linalg.norm(error) > self.landingThreshold and self.in_threshold == True:
+        elif not self.in_cylinder and self.in_threshold == True:
             self.in_threshold = False
             print("EXITED THRESHOLD")
         return velocityCommand
 
     def land(self):
+        # Land by aiming for a target slightly below the center of the landing pad
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,0.2]) + self.Rb2i.apply(np.array(self.antennaOffset))
         velocityCommand = self.saturate(self.landing_kp * error) + self.feedForwardVelocity
         return velocityCommand
@@ -194,19 +183,33 @@ class StateMachine:
         self.in_threshold = True
         computer_time = rospy.Time.now()
         self.threshold_time_start = computer_time.secs + computer_time.nsecs * 1E-9
-        # Save the altitude once you first enter the threshold
-        self.ref_altitude = np.copy(self.altitude)
 
     def rendezvousError(self):
-        """Manage the error in rendezvous state to keep the waypoint at a steady altitude after entering the threshold"""
-        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendezvousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
-        if self.in_threshold:
-            # After entering the threshold, hold altitude and only track laterally
-            diff = self.altitude - self.ref_altitude
-            # Saturate the altitude error in case altitude stops publishing
-            alt_error = np.min((abs(diff), self.rendezvousThreshold))
-            error[2] = np.sign(diff) * alt_error
+        """Manage the error in rendezvous state to determine if vehicle is within a cylindrical threshold"""
         
+        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.rendezvousHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        # Simulate heave
+        # ros_time = rospy.Time.now()
+        # t = ros_time.secs + ros_time.nsecs * 1E-9
+        # heave= 0.254*np.sin(2*np.pi/2 * t)
+        # error[2] += heave
+        xyError = np.linalg.norm(error[:2])
+        zError = abs(error[2])
+        if xyError < self.rendezvousThreshold and zError < self.rendezvousCylinder:
+            self.in_cylinder=True
+        else:
+            self.in_cylinder=False
+        return error
+    
+    def descendError(self):
+        """Manage the error in descend state to determine if vehicle is within a cylindrical threshold"""
+        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.landingHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        xyError = np.linalg.norm(error[:2])
+        zError = abs(error[2])
+        if xyError < self.landingThreshold and zError < self.landingCylinder:
+            self.in_cylinder=True
+        else:
+            self.in_cylinder=False
         return error
 
     def saturate(self, velocity):
