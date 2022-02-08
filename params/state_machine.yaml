@@ -6,8 +6,8 @@ state_machine: {
   missionThreshold: 0.3,
   rendezvousThreshold: 0.1, # Cylinder radius
   rendezvousCylinder: 0.25, # Half of the cylinder height
-  rendezvousHeight: -2.0,   # Height above launch pad
-  rendezvousTime: 0.2,      # Time requirement for threshold
+  rendezvousHeight: -1.25,   # Height above launch pad
+  rendezvousTime: 0.4,      # Time requirement for threshold
   landingHeight: -0.5,
   landingThreshold: 0.1,
   landingCylinder: 0.1,
