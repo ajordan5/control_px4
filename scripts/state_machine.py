@@ -41,6 +41,7 @@ class StateMachine:
         self.roverNed = [0.0,0.0,0.0]
         self.boatNed = [0.0,0.0,0.0]
         self.rover2BaseRelPos = [0.0,0.0,0.0]
+        self.relVel = [0.0,0.0,0.0]
         self.Rb2i = R.from_quat([0.0,0.0,0.0,1.0]) 
         self.currentWaypointIndex = 0
         self.feedForwardVelocity = [0.0,0.0,0.0]
@@ -63,12 +64,19 @@ class StateMachine:
 
         self.odom_sub_ = rospy.Subscriber('rover_odom',Odometry,self.odomCallback, queue_size=5)
         self.base_odom_sub_ = rospy.Subscriber('base_odom',Odometry,self.baseOdomCallback, queue_size=5)
+        self.rel_vel_sub_ = rospy.Subscriber('rel_vel',Odometry,self.relVelCallback, queue_size=5)
         while not rospy.is_shutdown():
             rospy.spin()
 
     def odomCallback(self,msg):
         self.odom = [msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.position.z]
         self.update_hlc()
+    
+    def relVelCallback(self,msg):
+        self.relVel[0] = msg.twist.twist.linear.x
+        self.relVel[1] = msg.twist.twist.linear.y
+        self.relVel[2] = msg.twist.twist.linear.z
+        self.relVelNorm = np.linalg.norm(np.array(self.relVel))
 
     def baseOdomCallback(self,msg):
         self.rover2BaseRelPos[0] = msg.pose.pose.position.x
@@ -117,23 +125,13 @@ class StateMachine:
         # Error from desired waypoint. Determine if vehicle is within a cylinder around waypoint
         error = self.rendezvousError()
 
-        # Entered threshold
-        if self.in_cylinder and self.in_threshold == False:
-            self.start_threshold_timer()  
-        # Already in threshold
-        elif self.in_cylinder and self.in_threshold == True:
-            
-            # Check how long inside threshold TODO instead of saving threshold time, you could just have the timer return the value
-            if self.threshold_timer() > self.rendezvousTime:
+        # Inside spatial threshold (cylinder)
+        if self.in_cylinder:
+            if self.relVelNorm < 0.1:
                 self.missionState = 2
                 self.publish_mission_state()
                 print('descend state')
-                self.in_threshold = False
                 self.in_cylinder = False
-        # Exited threshold
-        elif not self.in_cylinder and self.in_threshold == True:
-            self.in_threshold = False
-            print("EXITED THRESHOLD")
         
         velocityCommand = self.position_kp * error + self.feedForwardVelocity
         #print(velocityCommand)
@@ -146,21 +144,15 @@ class StateMachine:
         max_tilt = np.amax(np.degrees(baseXYAttitude))
         velocityCommand = self.saturate(self.position_kp * error) + self.feedForwardVelocity
         
-        # Entered threshold
-        if self.in_cylinder and self.in_threshold == False:
-            self.start_threshold_timer()
-        # Already in threshold
-        elif self.in_cylinder and self.in_threshold == True:
+        
+        if self.in_cylinder:
             
             # Check how long inside threshold
-            if self.threshold_timer() > self.landingTime and max_tilt < self.baseXYAttitudeThreshold:
+            if self.relVelNorm < 0.1 and max_tilt < self.baseXYAttitudeThreshold:
                 self.missionState = 3
                 self.publish_mission_state()
                 print('land state')
-        # Exited threshold
-        elif not self.in_cylinder and self.in_threshold == True:
-            self.in_threshold = False
-            print("EXITED THRESHOLD")
+        
         return velocityCommand
 
     def land(self):
