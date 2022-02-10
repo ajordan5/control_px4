@@ -1,12 +1,12 @@
 state_machine: {
-  waypoints: [[0.0,0.0,-2.5],
-              [0.0,-1.0,-2.0]],
+  waypoints: [[0.0,0.0,-5.5],
+              [0.0,-5.0,-5.0]],
               #[1.0,2.0,-2.0],
               #[-1.0,-2.0,-1.0]],
   missionThreshold: 0.3,
   rendezvousThreshold: 0.1, # Cylinder radius
   rendezvousCylinder: 0.25, # Half of the cylinder height
-  rendezvousHeight: -1.25,   # Height above launch pad
+  rendezvousHeight: -3.25,   # Height above launch pad
   rendezvousTime: 0.2,      # Time requirement for threshold
   landingHeight: -0.5,
   landingThreshold: 0.1,

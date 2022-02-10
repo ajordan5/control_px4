@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 
+<!--Launch file for simulations in mocap-->
 <launch>
     <arg name="bag_filename"            value="m2u_w_boat"/>
     <arg name="rover_mocap"             value="/rhodey_ned"/>

@@ -168,30 +168,3 @@ class Pose2Ublox():
         else:
             return xt
 
-    # def quat2euler(self, quat):
-        
-    #     qw = quat[0]
-    #     qx = quat[1]
-    #     qy = quat[2]
-    #     qz = quat[3]
-
-    #     # roll (x-axis rotation)
-    #     sinr_cosp = 2.0 * (qw * qx + qy * qz)
-    #     cosr_cosp = 1.0 - 2.0 * (qx * qx + qy * qy)
-    #     roll = np.arctan2(sinr_cosp, cosr_cosp)
-
-    #     # pitch (y-axis rotation)
-    #     sinp = 2.0 * (qw * qy - qz * qx)
-    #     pitch = np.arcsin(sinp)
-    #     if abs(sinp) >= 1:
-    #         pitch = np.pi*np.sign(sinp) / 2.0 # use 90 degrees if out of range
-
-    #     # yaw (z-axis rotation)
-    #     siny_cosp = 2.0 * (qw * qz + qx * qy)
-    #     cosy_cosp = 1.0 - 2 * (qy * qy + qz * qz)
-    #     yaw = np.arctan2(siny_cosp, cosy_cosp)
-
-    #     euler = [roll, pitch, yaw]
-
-    #     return euler
-        

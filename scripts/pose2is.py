@@ -39,9 +39,12 @@ class Pose2Is:
 
         position = np.array([msg.pose.position.x,msg.pose.position.y,msg.pose.position.z])
         quat = np.array([msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z,msg.pose.orientation.w])
-        acceleration, angularRates = self.get_imu_data(dt,position,quat)
-
-        self.publish_imu(msg.header.stamp, acceleration, angularRates)
+        # Ensure you don't divide by zero when generating IMU
+        if dt == 0:
+            pass
+        else:
+            acceleration, angularRates = self.get_imu_data(dt,position,quat)
+            self.publish_imu(msg.header.stamp, acceleration, angularRates)
 
     def get_imu_data(self,dt,position,quat):
         Rb2i = R.from_quat(quat)
@@ -63,7 +66,7 @@ class Pose2Is:
                                       [0.0, cphi, sphi*cth],
                                       [0.0, -sphi, cphi*cth]])
         angularRatesRaw = derivatives2Rates@eulerDot
-        # angularRatesLpf = self.low_pass_filter(angularRatesRaw,self.prevAngularRates)
+        #angularRatesLpf = self.low_pass_filter(angularRatesRaw,self.prevAngularRates)
         angularRatesLpf = np.zeros(3)
 
         self.prevPosition = position

@@ -75,7 +75,7 @@ class StateMachine:
     def relVelCallback(self,msg):
         self.relVel[0] = msg.twist.twist.linear.x
         self.relVel[1] = msg.twist.twist.linear.y
-        self.relVel[2] = msg.twist.twist.linear.z
+        self.relVel[2] = 0 #msg.twist.twist.linear.z
         self.relVelNorm = np.linalg.norm(np.array(self.relVel))
 
     def baseOdomCallback(self,msg):
@@ -97,8 +97,8 @@ class StateMachine:
         elif self.missionState == 3:
             commands = self.land()
         else:
-            commands = self.rendezvous()
-            #commands = self.fly_mission()
+            #commands = self.rendezvous()
+            commands = self.fly_mission()
 
         self.publish_hlc(commands)
 
@@ -108,6 +108,7 @@ class StateMachine:
         velocityCommand = self.position_kp * (np.array(currentWaypoint)-np.array(self.odom))
         if error < self.missionThreshold:
             print('reached waypoint ', self.currentWaypointIndex + 1)
+            print(currentWaypoint)
             self.currentWaypointIndex += 1
             if self.currentWaypointIndex == len(self.waypoints) and self.autoLand == True:
                 self.missionState = 1
@@ -127,6 +128,7 @@ class StateMachine:
 
         # Inside spatial threshold (cylinder)
         if self.in_cylinder:
+            print(self.relVelNorm)
             if self.relVelNorm < 0.1:
                 self.missionState = 2
                 self.publish_mission_state()

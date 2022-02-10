@@ -117,7 +117,7 @@ class CntrlPx4:
         print('system address = ', self.systemAddress)
         if self.sim == True:
             print("Running in Sim")
-            await drone.connect(system_address="udp://:14540")
+            await drone.connect(system_address="udp://:14030")
         else:
             print("Running in Hardware")
             await drone.connect(system_address=self.systemAddress)
@@ -161,11 +161,11 @@ class CntrlPx4:
         asyncio.ensure_future(self.print_armed(drone))
         asyncio.ensure_future(self.print_health(drone))
 
-        if self.sim == True:
-            await drone.action.arm()
-            await drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
-            await drone.offboard.start()
-            print("Simulation starting offboard.")
+        # if self.sim == True:
+        #     await drone.action.arm()
+        #     await drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
+        #     await drone.offboard.start()
+        #     print("Simulation starting offboard.")
 
         print('end of run')
         
@@ -182,6 +182,7 @@ class CntrlPx4:
             if self.mocap and self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
+            #print(self.velocityCommand)
             await drone.offboard.set_velocity_ned(self.velocityCommand)
 
     async def print_status(self,drone):
