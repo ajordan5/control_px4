@@ -4,19 +4,19 @@ state_machine: {
               #[1.0,2.0,-2.0],
               #[-1.0,-2.0,-1.0]],
   missionThreshold: 0.3,
-  rendezvousThreshold: 0.2, # Cylinder radius, and top radius of descent cone
+  rendezvousThreshold: 0.3, # Cylinder radius, and top radius of descent cone
   rendezvousCylinder: 0.25, # Half of the cylinder height
-  rendezvousHeight: -3.25,  # Height above launch pad, top of cone
-  rendezvousTime: 0.2,      # Time requirement for threshold
-  landingHeight: -0.4,      # Bottom of cone
+  rendezvousHeight: -5.25,  # Height above launch pad, top of cone
+  rendezvousTime: 0.02,     # Time requirement for threshold
+  landingHeight: -1.0,      # Bottom of cone
   landingThreshold: 0.1,    # Bottom radius of cone
   landingCylinder: 0.1,     # Threshold for transition between descent cone and pad approach
   landingTime: 0.02,
-  safeHeight: 0.5,          # Height below which the vehicle must return to before continuing descent of cone is exited
+  safeHeight: -1.5,          # Height below which the vehicle must return to before continuing descent of cone is exited
   baseXYAttitudeThreshold: 10.0,
   autoLand: True,
   cyclicalPath: False,
   positionKp: [.95, .95, 1.0],
-  landingKp: [1.25, 1.25, 1.25],
+  landingKp: [.95, .95, 1.0], #[1.25, 1.25, 1.25],
   maxDescendRate: 0.6,            # Maximum allowed descend rate when landing (m/s)
 }

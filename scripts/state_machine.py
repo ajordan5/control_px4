@@ -183,6 +183,7 @@ class StateMachine:
         # Return to a safe height if vehicle is dangerously close to the pad, but fell out of the cone threshold
         # Error from desired waypoint. Determine if vehicle is within a cylinder around waypoint
         error = self.cylinderError(self.returnHeight, self.landingThreshold, self.landingCylinder)
+        print(self.returnHeight)
 
          # Entered threshold
         if self.in_cylinder and self.in_threshold == False:
@@ -252,7 +253,7 @@ class StateMachine:
         zError = error[2]
         if xyError < self.coneRadius(-zError) and -zError < self.landingHeight and -zError > self.rendezvousHeight:
             self.in_cone=True
-            self.safeReturn()
+            self.safeReturn(zError)
             if abs(zError) < self.landingCylinder:
                 self.in_cylinder = True
             else:
@@ -275,11 +276,11 @@ class StateMachine:
 
     def safeReturn(self, zError):
         """Save a safe return height in case vehicle exits cone"""
-        if zError < self.safeHeight:
-            self.returnHeight = zError
+        if -zError < self.safeHeight:
+            self.returnHeight = -zError
         else:
             self.returnHeight = self.safeHeight 
-
+        print(self.returnHeight)
 
     def saturate(self, velocity):
         """Saturate the velocity to a safe descending speed"""
