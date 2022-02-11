@@ -126,15 +126,24 @@ class StateMachine:
         # Error from desired waypoint. Determine if vehicle is within a cylinder around waypoint
         error = self.rendezvousError()
 
-        # Inside spatial threshold (cylinder)
-        if self.in_cylinder:
-            print(self.relVelNorm)
-            if self.relVelNorm < 0.1:
+         # Entered threshold
+        if self.in_cylinder and self.in_threshold == False:
+            self.start_threshold_timer()  
+        # Already in threshold
+        elif self.in_cylinder and self.in_threshold == True:
+            
+            # Check how long inside threshold TODO instead of saving threshold time, you could just have the timer return the value
+            if self.threshold_timer() > self.rendezvousTime:
                 self.missionState = 2
                 self.publish_mission_state()
                 print('descend state')
+                self.in_threshold = False
                 self.in_cylinder = False
-        
+        # Exited threshold
+        elif not self.in_cylinder and self.in_threshold == True:
+            self.in_threshold = False
+            print("EXITED THRESHOLD")
+
         velocityCommand = self.position_kp * error + self.feedForwardVelocity
         #print(velocityCommand)
         return velocityCommand
@@ -147,13 +156,22 @@ class StateMachine:
         velocityCommand = self.saturate(self.position_kp * error) + self.feedForwardVelocity
         
         
-        if self.in_cylinder:
+         # Entered threshold
+        if self.in_cylinder and self.in_threshold == False:
+            self.start_threshold_timer()
+        # Already in threshold
+        elif self.in_cylinder and self.in_threshold == True:
             
             # Check how long inside threshold
-            if self.relVelNorm < 0.1 and max_tilt < self.baseXYAttitudeThreshold:
+            if self.threshold_timer() > self.landingTime and max_tilt < self.baseXYAttitudeThreshold:
                 self.missionState = 3
                 self.publish_mission_state()
                 print('land state')
+        # Exited threshold
+        elif not self.in_cylinder and self.in_threshold == True:
+            self.in_threshold = False
+            print("EXITED THRESHOLD")
+            
         
         return velocityCommand
 
