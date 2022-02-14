@@ -23,7 +23,7 @@ sigma_rover_relpos: 0.0, #TODO: tune this
 sigma_base_pos: 5.0, #TODO: tune this
 sigma_base_vel: 5.0, #TODO: tune this
 
-lpf_on: False, #low pass filter of measurements
+lpf_on: True, #low pass filter of measurements
 
 A: 6378137.0,       # WGS-84 Earth semimajor axis (m), from ekf_ros.cpp
 B: 6356752.314245,  # Derived Earth semiminor axis (m), from ekf_ros.cpp

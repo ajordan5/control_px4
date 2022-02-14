@@ -123,7 +123,7 @@ class CntrlPx4:
             await drone.connect(system_address=self.systemAddress)
 
         print("Waiting for drone to connect...")
-        await asyncio.sleep(5)
+        await asyncio.sleep(2)
         async for state in drone.core.connection_state():
             if state.is_connected:
                 #print(f"Drone discovered with UUID: {state.uuid}")
