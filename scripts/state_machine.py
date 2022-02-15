@@ -183,7 +183,7 @@ class StateMachine:
         # Return to a safe height if vehicle is dangerously close to the pad, but fell out of the cone threshold
         # Error from desired waypoint. Determine if vehicle is within a cylinder around waypoint
         error = self.cylinderError(self.returnHeight, self.landingThreshold, self.landingCylinder)
-        
+        #print(self.returnHeight, error[2])
          # Entered threshold
         if self.in_cylinder and self.in_threshold == False:
             self.start_threshold_timer()  
@@ -209,7 +209,10 @@ class StateMachine:
     def land(self):
         # Land by aiming for a target slightly below the center of the landing pad
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,0.2]) + self.Rb2i.apply(np.array(self.antennaOffset))
-        velocityCommand = self.saturate(self.landing_kp * error) + self.feedForwardVelocity
+        #velocityCommand = self.saturate(self.landing_kp * error) + self.feedForwardVelocity
+        velocityCommand = self.landing_kp * error + self.feedForwardVelocity
+
+        print(velocityCommand)
         return velocityCommand
 
     def threshold_timer(self):
@@ -250,8 +253,9 @@ class StateMachine:
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.landingHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
         xyError = np.linalg.norm(error[:2])
         zError = error[2]
-        #print(self.coneRadius(zError), xyError, zError)
-        if xyError < self.coneRadius(zError) and -zError < self.landingHeight and -zError > self.rendezvousHeight:
+        #print("cone", self.coneRadius(zError), xyError, zError)
+        self.abovePad = -zError + self.landingHeight
+        if xyError < self.coneRadius(zError) and self.abovePad < self.landingHeight and self.abovePad > self.rendezvousHeight:
             self.in_cone=True
             self.safeReturn(zError)
             if abs(zError) < self.landingCylinder:
@@ -269,7 +273,6 @@ class StateMachine:
                 self.missionState = 3
                 self.publish_mission_state()
                 print("goaround state")
-                print("Exited cone, returning to a safe height")
 
         #print(self.missionState, self.returnHeight, error)
         return error
@@ -281,12 +284,11 @@ class StateMachine:
 
     def safeReturn(self, zError):
         """Save a safe return height in case vehicle exits cone. Execute go around if too close to the pad"""
-        above_pad = -zError + self.landingHeight
-        if above_pad < self.safeHeight:
-            self.returnHeight = above_pad
+        if self.abovePad < self.safeHeight:
+            self.returnHeight = self.abovePad
         else:
             self.returnHeight = self.safeHeight - 0.5
-        print("in", self.returnHeight, zError) 
+        #print("in", self.returnHeight, zError) 
 
     def saturate(self, velocity):
         """Saturate the velocity to a safe descending speed"""
