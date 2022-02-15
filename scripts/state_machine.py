@@ -85,9 +85,10 @@ class StateMachine:
         self.rover2BaseRelPos[0] = msg.pose.pose.position.x
         self.rover2BaseRelPos[1] = msg.pose.pose.position.y
         self.rover2BaseRelPos[2] = msg.pose.pose.position.z
-        self.feedForwardVelocity[0] = msg.twist.twist.linear.x
-        self.feedForwardVelocity[1] = msg.twist.twist.linear.y
-        self.feedForwardVelocity[2] = msg.twist.twist.linear.z
+        # TODO, uncomment this, just testing ff in sim
+        #self.feedForwardVelocity[0] = msg.twist.twist.linear.x
+        #self.feedForwardVelocity[1] = msg.twist.twist.linear.y
+        #self.feedForwardVelocity[2] = msg.twist.twist.linear.z
         #print(np.linalg.norm(np.array(self.feedForwardVelocity)))
 
         self.Rb2i = R.from_quat([msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,msg.pose.pose.orientation.z,msg.pose.pose.orientation.w])      
@@ -208,7 +209,7 @@ class StateMachine:
 
     def land(self):
         # Land by aiming for a target slightly below the center of the landing pad
-        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,0.2]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,0.4]) + self.Rb2i.apply(np.array(self.antennaOffset))
         #velocityCommand = self.saturate(self.landing_kp * error) + self.feedForwardVelocity
         velocityCommand = self.landing_kp * error + self.feedForwardVelocity
 
@@ -254,10 +255,11 @@ class StateMachine:
         xyError = np.linalg.norm(error[:2])
         zError = error[2]
         #print("cone", self.coneRadius(zError), xyError, zError)
-        self.abovePad = -zError + self.landingHeight
-        if xyError < self.coneRadius(zError) and self.abovePad < self.landingHeight and self.abovePad > self.rendezvousHeight:
+        abovePad = -self.rover2BaseRelPos[2] # Relative pose is positive up from the pad, hence the negative for NED
+        if xyError < self.coneRadius(abovePad) and abovePad < self.landingHeight and abovePad > self.rendezvousHeight:
             self.in_cone=True
             self.safeReturn(zError)
+            #print("in:", error)
             if abs(zError) < self.landingCylinder:
                 self.in_cylinder = True
             else:
@@ -266,10 +268,11 @@ class StateMachine:
             # Do not descend if outside cone, return to last known height within cone or a higher (safe) height if too close to the pad
             self.in_cone=False
             self.in_cylinder=False
-            print("out", self.returnHeight, zError) 
+            #print("out", self.returnHeight, zError) 
             error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.returnHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
-            print(error)
-            if -zError > self.safeHeight:
+            #print(error)
+            print(xyError < self.coneRadius(abovePad) , abovePad < self.landingHeight , abovePad > self.rendezvousHeight, abovePad, xyError)
+            if abovePad < self.safeHeight:
                 self.missionState = 3
                 self.publish_mission_state()
                 print("goaround state")
@@ -280,12 +283,12 @@ class StateMachine:
     def coneRadius(self, zError):
         """Radius of defined cone for descent state"""
         return self.landingThreshold  + (self.rendezvousThreshold - self.landingThreshold) \
-            *((zError + self.landingHeight) / (-self.rendezvousHeight + self.landingHeight))
+            *((-zError + self.landingHeight) / (-self.rendezvousHeight + self.landingHeight))
 
     def safeReturn(self, zError):
         """Save a safe return height in case vehicle exits cone. Execute go around if too close to the pad"""
-        if self.abovePad < self.safeHeight:
-            self.returnHeight = self.abovePad
+        if self.rover2BaseRelPos[2] > -self.safeHeight:
+            self.returnHeight = -self.rover2BaseRelPos[2]
         else:
             self.returnHeight = self.safeHeight - 0.5
         #print("in", self.returnHeight, zError) 
