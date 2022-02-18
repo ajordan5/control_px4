@@ -6,10 +6,10 @@
 2. Create a workspace (i.e. rtk_ws): http://wiki.ros.org/ROS/Tutorials/InstallingandConfiguringROSEnvironment
 
 3. Clone the following in your src directory:
-  1. This repo: https://github.com/ajordan5/control_px4
-  2. The boat_estimator repo: https://github.com/ajordan5/boat_estimator
-  3. The airsim_publish repo: https://github.com/ajordan5/airsim_publish
-  4. The MAGICC lab's UBLOX_read repo: https://github.com/byu-magicc/UBLOX_read
+    1. This repo: https://github.com/ajordan5/control_px4
+    2. The boat_estimator repo: https://github.com/ajordan5/boat_estimator
+    3. The airsim_publish repo: https://github.com/ajordan5/airsim_publish
+    4. The MAGICC lab's UBLOX_read repo: https://github.com/byu-magicc/UBLOX_read
 
 4. Run the following command in the UBLOX directory: 
     
@@ -21,18 +21,18 @@
 
 6. Install the following python packages, if needed:
 
-      '''bash
+      ```bash
         $ python3 -m pip install --user numpy scipy
         $ pip3 install mavsdk
         $ pip3 install navpy 
         $ pip3 install masgpack-rpc-python
         $ pip3 install airsim
-      '''
+      ```
 
 7. Run the following command in your workspace directory to build it:
-      '''bash
+      ```bash
         $ catkin_make
-      '''
+      ```
 
 8. Add the following lines to your .zsh or .bashrc (you may want or need to comment them out when you are working on other stuff or run those commands every time you launch the simulator rather than adding them to your source file):
       ```bash
@@ -49,17 +49,17 @@
 ## Install PX4 SITL
 
 1. Run the following commands in a location where you like to clone git repositories:
-      '''bash
+      ```bash
         $ mkdir -p PX4
         $ cd PX4
         $ git clone https://github.com/PX4/PX4-Autopilot.git --recursive
         $ bash ./PX4-Autopilot/Tools/setup/ubuntu.sh --no-nuttx --no-sim-tools
         $ cd PX4-Autopilot
-      '''
+      ```
     See https://microsoft.github.io/AirSim/px4_sitl/ and https://microsoft.github.io/AirSim/px4_build/ for further questions.
 
 2. Change your AirSim settings.json file  (by default in the Documents/Airsim directory):
-      '''bash
+      ```bash
         {
           "SettingsVersion": 1.2,
           "SimMode": "Multirotor",
@@ -100,30 +100,28 @@
               }
           }
         }
-      '''
+      ```
     Note the additional parameters than what the link in Step 1 requires. These are necessary to run 
     the simulation without an RC.
 
 3. Run PX4 in the PX$-Autopilot directory:
-      '''bash
+      ```bash
         $ make px4_sitl_default none_iris
-      '''
+      ```
 
 ## Launch the simulation
 
 1. Run the simulation in UnrealEngine
     1. Download and extract the precompiled environment for the BoatLanding project from GitHub: https://gitlab.magiccvs.byu.edu/lab/airsim_environments
     2. (Note: Do not do this last step if you use Jupyter Notebooks or iPython. We are working on a fix for this, but for now there is a breaking dependency conflict with these packages. This can be avoided by using vitual python environments, which is more complex than this guide goes.) Run pip install Airsim.
-    3. In the environment directory, run the .sh folder within the LinuxNoEditor folder to launch the simulation
+    3. In the environment directory, run the .sh file within the LinuxNoEditor folder to launch the simulation
 
 2. Run PX4 in the PX4-Autopilot directory:
-      '''bash
+      ```bash
         $ make px4_sitl_default none_iris
-      '''
+      ```
 
-3. 
-
-4. Run the launch file for boat landing:
+3. Run the launch file for boat landing:
         
       ```bash
         $ roslaunch control_px4 airsim_w_boat.launch
