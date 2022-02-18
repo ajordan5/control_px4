@@ -7,12 +7,12 @@ from mavsdk import System
 
 async def run():
     drone = System()
-    await drone.connect(system_address="udp://:14540")
+    await drone.connect(system_address="udp://:14030")
 
     print("Waiting for drone to connect...")
     async for state in drone.core.connection_state():
         if state.is_connected:
-            print(f"Drone discovered with UUID: {state.uuid}")
+            print(f"Drone discovered")
             break
 
     print('getting aid mask parameter')

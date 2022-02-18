@@ -12,7 +12,11 @@ async def run():
     print("Waiting for drone to connect...")
     async for state in drone.core.connection_state():
         if state.is_connected:
-            print(f"Drone discovered with UUID: {state.uuid}")
+            try:
+                print(f"Drone discovered with UUID: {state.uuid}")
+            except AttributeError as e:
+                print(e)
+                print("Drone discovered")
             break
 
     print('getting aid mask parameter')
