@@ -3,7 +3,7 @@
 ## Setup Workspace
 1. Install ROS Noetic: http://wiki.ros.org/ROS/Installation
 
-2. Create a workspace (i.e. rtk_ws): http://wiki.ros.org/ROS/Tutorials/InstallingandConfiguringROSEnvironment
+2. Create a catkin workspace (i.e. rtk_ws): http://wiki.ros.org/ROS/Tutorials/InstallingandConfiguringROSEnvironment
 
 3. Clone the following in your src directory:
     1. This repo: https://github.com/ajordan5/control_px4
@@ -17,7 +17,7 @@
         $ git submodule update --init --recursive
       ```
 
-5. Make a directory and subdirectory called "data/airsim" in your home directory (one level above your workspace directory)
+5. Make a directory and subdirectory called "data/airsim" in your home directory (one level above your workspace directory). This is where rosbags will be recorded for simulation. If flying in mocap or outdoors you will also need "data/mocap" and "data/outdoor" directories.
 
 6. Install the following python packages, if needed:
 
@@ -102,9 +102,9 @@
         }
       ```
     Note the additional parameters than what the link in Step 1 requires. These are necessary to run 
-    the simulation without an RC.
+    the simulation without an RC or joystick (i.e. no manual control).
 
-3. Run PX4 in the PX$-Autopilot directory:
+3. Run PX4 in the PX4-Autopilot directory:
       ```bash
         $ make px4_sitl_default none_iris
       ```
@@ -113,7 +113,7 @@
 
 1. Run the simulation in UnrealEngine
     1. Download and extract the precompiled environment for the BoatLanding project from GitHub: https://gitlab.magiccvs.byu.edu/lab/airsim_environments
-    2. (Note: Do not do this last step if you use Jupyter Notebooks or iPython. We are working on a fix for this, but for now there is a breaking dependency conflict with these packages. This can be avoided by using vitual python environments, which is more complex than this guide goes.) Run pip install Airsim.
+    2. (Note: Do not do this last step if you use Jupyter Notebooks or iPython. We are working on a fix for this, but for now there is a breaking dependency conflict with these packages. This can be avoided by using vitual python environments, which is more complex than this guide goes.) Run ```$ pip install Airsim```.
     3. In the environment directory, run the .sh file within the LinuxNoEditor folder to launch the simulation
 
 2. Run PX4 in the PX4-Autopilot directory:
@@ -129,4 +129,4 @@
   
 ## Running in hardware
    
-When running outdoor or in mocap, the setup scripts will need to be run (found in control_px4/scripts/setup). For running airsim, no setup script is needed; just make sure these airsim settings as defined in the Install PX4 SITL section are correct.
+When running outdoor or in mocap, the setup scripts will need to be run (found in control_px4/scripts/setup). For running airsim, no setup script is needed; just make sure the airsim settings as defined in the Install PX4 SITL section above are correct.
