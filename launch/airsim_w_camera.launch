@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+
+<!--Launch file for simulations in AirSim-->
+<launch>
+    <arg name="bag_filename"            value="a2u_w_boat"/>
+    <arg name="posVelEcef"              value="/a2u/rover/PosVelEcef"/>
+    <arg name="base2Rover_relPos"       value="/a2u/rover/RelPos"/>
+    <arg name="base_posVelEcef"         value="/a2u/base/PosVelEcef"/>
+    <arg name="compass_relPos"          value="/a2u/base/compass/RelPos"/>
+    <arg name="base_estimator_params"   value="params"/>
+    <arg name="position_measurement"    value="/rover_airsim"/> <!--might not need this-->
+
+    <node name="airsim_publish" pkg="airsim_publish" type="airsim_publisher.py" output="screen"/>
+    
+    <group ns="camera">
+        <rosparam command="load" file="$(find airsim_publish)/params/airsim_camera.yaml"/>
+        <node name="airsim_camera" pkg="airsim_publish" type="airsim_camera.py" output="screen">
+        </node>
+    </group>
+
+    <!--AirSim 2 Ublox. Conversion of simulation data to pseudo GPS -->
+    <group ns="a2u">
+        <rosparam command="load" file="$(find control_px4)/params/airsim2ublox.yaml"/>
+        <node name="airsim2ublox" pkg="control_px4" type="airsim2ublox.py" output="screen">
+        </node>
+    </group>
+
+    <!--Pose data converted to pseudo imu-->
+    <group ns="p2i">
+        <node name="px4_2is" pkg="control_px4" type="pose2is.py" output="screen">
+            <remap from="/base_pose" to="/base_airsim"/>
+        </node>
+    </group>
+
+    <include file="$(find apriltag_ros)/launch/continuous_detection.launch"/>
+
+    <include file="$(find boat_estimator)/launch/standard.launch">
+        <arg name="boat_imu"            value="/base/imu"/>
+        <arg name="base_2_rover_relPos" value="$(arg base2Rover_relPos)"/>
+        <arg name="rover_PosVelEcef"    value="$(arg posVelEcef)"/>
+        <arg name="boat_PosVelEcef"     value="$(arg base_posVelEcef)"/>
+        <arg name="compass_relPos"      value="$(arg compass_relPos)"/>
+        <arg name="params_file"         value="params"/>
+    </include>
+
+    <include file="$(find control_px4)/launch/include/control_px4.launch">
+        <arg name="position_measurement"    value="$(arg position_measurement)"/>
+        <arg name="posVelEcef"    value="$(arg posVelEcef)"/>
+    </include>
+    <node pkg="rosbag" type="record" name="record" output="screen" args="-o ../data/airsim/$(arg bag_filename).bag --all"/>
+</launch>
