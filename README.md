@@ -1,5 +1,7 @@
 # control_px4
 
+control_px4 is a package created to interface with ROS and the PX4-Autopilot to manage the landing of an autonomous quadrotor on a moving platform
+
 ## Setup Workspace
 1. Install ROS Noetic: http://wiki.ros.org/ROS/Installation
 
