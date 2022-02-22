@@ -18,8 +18,7 @@ from geometry_msgs.msg import PointStamped
 
 class CntrlPx4:
     def __init__(self):
-        self.positionCommands = PositionNedYaw(0.0,0.0,0.0,0.0)
-        self.feedForwardVelocity = VelocityNedYaw(0.0,0.0,0.0,0.0)
+        self.velocityCommand = VelocityNedYaw(0.0,0.0,0.0,0.0)
         self.prevPoseTime = 0.0
         self.estimateMsg = Odometry()
         self.meas1_received = False
@@ -41,12 +40,9 @@ class CntrlPx4:
             self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseStamped, self.positionMeasurementCallback, queue_size=5)
         
     def commandsCallback(self,msg):
-        self.positionCommands.north_m = msg.pose.pose.position.x
-        self.positionCommands.east_m = msg.pose.pose.position.y
-        self.positionCommands.down_m = msg.pose.pose.position.z
-        self.feedForwardVelocity.north_m_s = msg.twist.twist.linear.x
-        self.feedForwardVelocity.east_m_s = msg.twist.twist.linear.y
-        self.feedForwardVelocity.down_m_s = msg.twist.twist.linear.z
+        self.velocityCommand.north_m_s = msg.twist.twist.linear.x
+        self.velocityCommand.east_m_s = msg.twist.twist.linear.y
+        self.velocityCommand.down_m_s = msg.twist.twist.linear.z
 
     def positionMeasurementCallback(self,msg):
        time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
@@ -119,14 +115,30 @@ class CntrlPx4:
     async def run(self):
         drone = System()
         print('system address = ', self.systemAddress)
-        await drone.connect(system_address=self.systemAddress)
+        if self.sim == True:
+            print("Running in Sim")
+            await drone.connect(system_address="udp://:14540")
+        else:
+            print("Running in Hardware")
+            await drone.connect(system_address=self.systemAddress)
 
         print("Waiting for drone to connect...")
         await asyncio.sleep(5)
         async for state in drone.core.connection_state():
             if state.is_connected:
-                print(f"Drone discovered with UUID: {state.uuid}")
+                #print(f"Drone discovered with UUID: {state.uuid}")
+                print("CONNECTED")
                 break
+        
+        # Setup simulation. This used to be at the bottom of the run function but was not working
+        if self.sim == True:
+            print("ARMING")
+            await drone.action.arm()
+            #await drone.action.start_mission()
+            await drone.offboard.set_position_velocity_ned(PositionNedYaw(0.0,0.0,0.0,0.0),VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
+            await drone.offboard.start()
+            
+            print("Simulation starting offboard.")
 
         #TODO publish all of these messages, so that rosbags contain this information
         await drone.telemetry.set_rate_odometry(100)
@@ -165,17 +177,12 @@ class CntrlPx4:
                 self.publish_flight_mode()
 
     async def input_meas_output_est(self,drone):
-        #print("called")
         async for odom in drone.telemetry.odometry():
-            #print(odom)
             self.publish_estimate(odom)
             if self.mocap and self.pose.time_usec != self.prevPoseTime and self.meas1_received:
                 await drone.mocap.set_vision_position_estimate(self.pose)
                 self.prevPoseTime = self.pose.time_usec
-                #print(self.pose)
-            await drone.offboard.set_position_velocity_ned(self.positionCommands,self.feedForwardVelocity)
-            #print("pose command", self.positionCommands)
-            #print("vel command", self.feedForwardVelocity)
+            await drone.offboard.set_velocity_ned(self.velocityCommand)
 
     async def print_status(self,drone):
         async for status in drone.telemetry.status_text():

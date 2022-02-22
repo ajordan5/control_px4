@@ -4,11 +4,18 @@ state_machine: {
               #[1.0,2.0,-2.0],
               #[-1.0,-2.0,-1.0]],
   missionThreshold: 0.3,
-  rendevousThreshold: 0.1,
-  rendevousHeight: -1.5,
-  landingHeight: -0.20,
-  landingThreshold: 0.2,
+  rendezvousThreshold: 0.1, # Cylinder radius
+  rendezvousCylinder: 0.25, # Half of the cylinder height
+  rendezvousHeight: -2.0,   # Height above launch pad
+  rendezvousTime: 0.2,      # Time requirement for threshold
+  landingHeight: -0.5,
+  landingThreshold: 0.1,
+  landingCylinder: 0.1,
+  landingTime: 0.01,
   baseXYAttitudeThreshold: 10.0,
   autoLand: True,
   cyclicalPath: False,
+  positionKp: [.95, .95, 1.0],
+  landingKp: [1.25, 1.25, 1.25],
+  maxDescendRate: 0.6,            # Maximum allowed descend rate when landing (m/s)
 }

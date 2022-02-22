@@ -2,12 +2,14 @@
 
 <launch>
     <arg name="position_measurement" default="/no_external_meas"/>
+    <arg name="posVelEcef" default="/rover/PosVelEcef"/>
 
     <rosparam command="load" file="$(find control_px4)/params/state_machine.yaml"/>
     <node name="state_machine" pkg="control_px4" type="state_machine.py" output="screen">
         <remap from="rover2BaseRelPos" to="/rover2base_relPos"/>
 	    <remap from="base_odom" to="/base_odom"/>
         <remap from="rover_odom" to="/rover_odom"/>
+        <remap from="posVelEcef" to="$(arg posVelEcef)"/>
     </node>
     <rosparam command="load" file="$(find control_px4)/params/control_px4.yaml"/>
     <node name="control_px4" pkg="control_px4" type="control_px4.py" output="screen">

@@ -31,6 +31,7 @@
 
     <include file="$(find control_px4)/launch/include/control_px4.launch">
         <arg name="position_measurement"    value="$(arg position_measurement)"/>
+        <arg name="posVelEcef"    value="$(arg posVelEcef)"/>
     </include>
     <node pkg="rosbag" type="record" name="record" output="screen" args="-o ../data/mocap/$(arg bag_filename).bag --all"/>
 </launch>
