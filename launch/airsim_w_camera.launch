@@ -8,20 +8,23 @@
     <arg name="base_posVelEcef"         value="/a2u/base/PosVelEcef"/>
     <arg name="compass_relPos"          value="/a2u/base/compass/RelPos"/>
     <arg name="base_estimator_params"   value="params"/>
-    <arg name="position_measurement"    value="/rover_airsim"/> <!--might not need this-->
+    <arg name="position_measurement"    value="/airsim_node/PX4/odom_local_ned"/> <!--might not need this-->
 
     <node name="airsim_publish" pkg="airsim_publish" type="airsim_publisher.py" output="screen"/>
     
-    <group ns="camera">
+    <!--group ns="camera">
         <rosparam command="load" file="$(find airsim_publish)/params/airsim_camera.yaml"/>
         <node name="airsim_camera" pkg="airsim_publish" type="airsim_camera.py" output="screen">
         </node>
-    </group>
+    </group-->
+
+    <include file="$(find airsim_ros_pkgs)/launch/airsim_node.launch" />
 
     <!--AirSim 2 Ublox. Conversion of simulation data to pseudo GPS -->
     <group ns="a2u">
         <rosparam command="load" file="$(find control_px4)/params/airsim2ublox.yaml"/>
         <node name="airsim2ublox" pkg="control_px4" type="airsim2ublox.py" output="screen">
+            <remap from="/rover_airsim" to="$(arg position_measurement)"/>
         </node>
     </group>
 

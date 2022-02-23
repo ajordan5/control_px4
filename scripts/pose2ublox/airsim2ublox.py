@@ -3,6 +3,7 @@ import numpy as np
 import rospy
 from pose2ublox_ros import Pose2Ublox_Ros
 from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Odometry
 
 class Airsim2Ublox(Pose2Ublox_Ros):
     """Class that listens for airsim NED information and stores it for synthetic measurment generation"""
@@ -11,7 +12,7 @@ class Airsim2Ublox(Pose2Ublox_Ros):
         self.receivedRoverPose = False
         self.receivedBasePose = False
         # Subscribers
-        self.rover_airsim_ned_sub_ = rospy.Subscriber('/rover_airsim', PoseStamped, self.roverNedCallback, queue_size=5)
+        self.rover_airsim_ned_sub_ = rospy.Subscriber('/rover_airsim', Odometry, self.roverNedCallback, queue_size=5)
         self.base_airsim_ned_sub_ = rospy.Subscriber('/base_airsim', PoseStamped, self.baseNedCallback, queue_size=5)
 
         while not rospy.is_shutdown():
@@ -19,9 +20,9 @@ class Airsim2Ublox(Pose2Ublox_Ros):
             rospy.spin()
 
     def roverNedCallback(self, msg):
-        self.p2u.rover_ned = np.array([msg.pose.position.x,
-                                   msg.pose.position.y,
-                                   msg.pose.position.z])
+        self.p2u.rover_ned = np.array([msg.pose.pose.position.x,
+                                   msg.pose.pose.position.y,
+                                   msg.pose.pose.position.z])
         if not self.receivedPose:
             self.receivedRoverPose = True
             if self.receivedBasePose:
