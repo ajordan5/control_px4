@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from os import stat_result
+from black import err
 import numpy as np
 import rospy
 from geometry_msgs.msg import PoseStamped
@@ -37,6 +38,8 @@ class StateMachine:
         self.baseXYAttitudeThreshold = rospy.get_param('~baseXYAttitudeThreshold',8.0)
         self.landingHeight = rospy.get_param('~landingHeight', -0.5)
         self.safeHeight = rospy.get_param('~safeHeight', -1.5)
+        self.transition = rospy.get_param('~transition', 0.05)
+        self.order = rospy.get_param('~order', 4)
         self.autoLand = rospy.get_param('~autoLand', False)
         self.cyclicalPath = rospy.get_param('~cyclicalPath', False)
         self.max_descend = rospy.get_param('~maxDescendRate', 5)
@@ -94,126 +97,18 @@ class StateMachine:
         self.Rb2i = R.from_quat([msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,msg.pose.pose.orientation.z,msg.pose.pose.orientation.w])      
 
     def update_hlc(self):
-        if self.missionState == 1:
-            commands = self.rendezvous()
-        elif self.missionState == 2:
-            commands = self.descend()
-        elif self.missionState == 3:
-            commands = self.goaround()
-        elif self.missionState == 4:
-            commands = self.land()
-        else:
-            #commands = self.rendezvous()
-            commands = self.fly_mission()
+        commands = self.land()
 
         self.publish_hlc(commands)
-
-    def fly_mission(self):
-        currentWaypoint = self.waypoints[self.currentWaypointIndex]
-        error = np.linalg.norm(np.array(currentWaypoint)-np.array(self.odom))
-        velocityCommand = self.position_kp * (np.array(currentWaypoint)-np.array(self.odom))
-        if error < self.missionThreshold:
-            print('reached waypoint ', self.currentWaypointIndex + 1)
-            print(currentWaypoint)
-            self.currentWaypointIndex += 1
-            if self.currentWaypointIndex == len(self.waypoints) and self.autoLand == True:
-                self.missionState = 1
-                self.publish_mission_state()
-                print('rendezvous state')
-                self.beginLandingRoutineMsg.data = True
-                self.begin_landing_routine_pub_.publish(self.beginLandingRoutineMsg)
-            if self.cyclicalPath:
-                self.currentWaypointIndex %= len(self.waypoints)            
-            elif self.currentWaypointIndex == len(self.waypoints):
-                self.currentWaypointIndex -=1
-        return velocityCommand
-
-    def rendezvous(self):
-        # Error from desired waypoint. Determine if vehicle is within a cylinder around waypoint
-        error = self.cylinderError(self.rendezvousHeight, self.rendezvousThreshold, self.rendezvousCylinder)
-
-         # Entered threshold
-        if self.in_cylinder and self.in_threshold == False:
-            self.start_threshold_timer()  
-        # Already in threshold
-        elif self.in_cylinder and self.in_threshold == True:
-            
-            # Check how long inside threshold TODO instead of saving threshold time, you could just have the timer return the value
-            if self.threshold_timer() > self.rendezvousTime:
-                self.missionState = 2
-                self.publish_mission_state()
-                print('descend state')
-                self.in_threshold = False
-                self.in_cylinder = False
-        # Exited threshold
-        elif not self.in_cylinder and self.in_threshold == True:
-            self.in_threshold = False
-            print("EXITED THRESHOLD")
-
-        velocityCommand = self.position_kp * error + self.feedForwardVelocity
-        #print(velocityCommand)
-        return velocityCommand
-
-    def descend(self):
-        # Descend towards pad if vehicle within cylinder theshold
-        error = self.coneError()
-        euler = self.Rb2i.as_euler('xyz')
-        baseXYAttitude = np.abs(euler[0:2])
-        max_tilt = np.amax(np.degrees(baseXYAttitude))
-        velocityCommand = self.saturate(self.position_kp * error) + self.feedForwardVelocity
-            
-         # Entered threshold
-        if self.in_cylinder and self.in_threshold == False:
-            self.start_threshold_timer()
-        # Already in threshold
-        elif self.in_cylinder and self.in_threshold == True:
-            
-            # Check how long inside threshold
-            if self.threshold_timer() > self.landingTime and max_tilt < self.baseXYAttitudeThreshold:
-                self.missionState = 4
-                self.publish_mission_state()
-                print('land state')
-        # Exited threshold
-        elif not self.in_cylinder and self.in_threshold == True:
-            self.in_threshold = False
-            print("EXITED THRESHOLD")
-      
-        return velocityCommand
-
-    def goaround(self):
-        # Return to a safe height if vehicle is dangerously close to the pad, but fell out of the cone threshold
-        # Error from desired waypoint. Determine if vehicle is within a cylinder around waypoint
-        error = self.cylinderError(self.returnHeight, self.landingThreshold, self.landingCylinder)
-        #print(self.returnHeight, error[2])
-         # Entered threshold
-        if self.in_cylinder and self.in_threshold == False:
-            self.start_threshold_timer()  
-        # Already in threshold
-        elif self.in_cylinder and self.in_threshold == True:  
-            # Check how long inside threshold
-            if self.threshold_timer() > self.rendezvousTime:
-                self.missionState = 2
-                self.publish_mission_state()
-                print('descend state')
-                self.in_threshold = False
-                self.in_cylinder = False
-        # Exited threshold
-        elif not self.in_cylinder and self.in_threshold == True:
-            self.in_threshold = False
-            print("EXITED GOAROUND THRESHOLD")
-
-        velocityCommand = self.position_kp * error + self.feedForwardVelocity
-        #print(velocityCommand)
-        return velocityCommand
 
 
     def land(self):
         # Land by aiming for a target slightly below the center of the landing pad
-        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,0.4]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        error = self.field_manager()#np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,0.4]) + self.Rb2i.apply(np.array(self.antennaOffset))
         #velocityCommand = self.saturate(self.landing_kp * error) + self.feedForwardVelocity
         velocityCommand = self.landing_kp * error + self.feedForwardVelocity
 
-        print(velocityCommand)
+        print("v", velocityCommand)
         return velocityCommand
 
     def threshold_timer(self):
@@ -231,54 +126,45 @@ class StateMachine:
         computer_time = rospy.Time.now()
         self.threshold_time_start = computer_time.secs + computer_time.nsecs * 1E-9
 
-    def cylinderError(self, height, radius, height_cylinder):
-        """Manage the error to determine if vehicle is within a cylindrical threshold"""
-        
-        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,height]) + self.Rb2i.apply(np.array(self.antennaOffset))
-        # Simulate heave
-        # ros_time = rospy.Time.now()
-        # t = ros_time.secs + ros_time.nsecs * 1E-9
-        # heave= 0.254*np.sin(2*np.pi/2 * t)
-        # error[2] += heave
+    def field_manager(self):
+        """Determine where in the vector field the rover is located and return a velocity command in the corresponding direction"""
+        error = np.array(self.rover2BaseRelPos) + self.Rb2i.apply(np.array(self.antennaOffset))
         xyError = np.linalg.norm(error[:2])
         zError = abs(error[2])
-        if xyError < radius and zError < height_cylinder:
-            self.in_cylinder=True
-            #self.returnHeight = error[2]
-        else:
-            self.in_cylinder=False
-        return error
-    
-    def coneError(self):
-        """Manage the error in descend state to determine if vehicle is within a conical threshold"""
-        error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.landingHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
-        xyError = np.linalg.norm(error[:2])
-        zError = error[2]
-        #print("cone", self.coneRadius(zError), xyError, zError)
-        abovePad = -self.rover2BaseRelPos[2] # Relative pose is positive up from the pad, hence the negative for NED
-        if xyError < self.coneRadius(abovePad) and abovePad < self.landingHeight and abovePad > self.rendezvousHeight:
-            self.in_cone=True
-            self.safeReturn(zError)
-            #print("in:", error)
-            if abs(zError) < self.landingCylinder:
-                self.in_cylinder = True
-            else:
-                self.in_cylinder = False
-        else:
-            # Do not descend if outside cone, return to last known height within cone or a higher (safe) height if too close to the pad
-            self.in_cone=False
-            self.in_cylinder=False
-            #print("out", self.returnHeight, zError) 
-            error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.returnHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
-            #print(error)
-            print(xyError < self.coneRadius(abovePad) , abovePad < self.landingHeight , abovePad > self.rendezvousHeight, abovePad, xyError)
-            if abovePad < self.safeHeight:
-                self.missionState = 3
-                self.publish_mission_state()
-                print("goaround state")
+        cone_radius = self.coneRadius(zError)
+        print("e:", error)
+         
+        # In Cone
+        if xyError < cone_radius - self.transition:
+            return error/2
 
-        #print(self.missionState, self.returnHeight, error)
-        return error
+        # Out of Cone
+        elif xyError > cone_radius:
+            # Evaluate the slope perpendicular to the specified polynomial
+            perpendicular = np.arctan(self.order * xyError ** (self.order - 1)) + np.pi/2
+            lateral = abs(np.cos(perpendicular))
+            longitudinal = np.sin(perpendicular)
+            xDir = error[0]/xyError * lateral#np.cos(theta) * lateral
+            yDir = error[1]/xyError#np.sin(theta) * lateral
+            return np.array([xDir, yDir, longitudinal])
+
+        # Transition between the two
+        else:
+            # Linear transition of the two fields
+            to_cone = cone_radius - xyError
+            k1 = to_cone/self.transition
+            k2 = (self.transition - to_cone)/ self.transition
+            # Outer field
+            perpendicular = np.arctan(self.order * xyError ** (self.order - 1)) + np.pi/2
+            lateral = np.cos(perpendicular)
+            longitudinal = np.sin(perpendicular)
+            theta = np.arctan2(error[1], error[0])
+            xDir = -error[0]/xyError * lateral#np.cos(theta) * lateral
+            yDir = -error[1]/xyError * lateral#np.sin(theta) * lateral
+            outer =  k2 * np.array([xDir, yDir, longitudinal])
+            # Inner field
+            inner = k1 * error/2
+            return inner + outer
 
     def coneRadius(self, zError):
         """Radius of defined cone for descent state"""
