@@ -37,6 +37,7 @@ class StateMachine:
         self.baseXYAttitudeThreshold = rospy.get_param('~baseXYAttitudeThreshold',8.0)
         self.landingHeight = rospy.get_param('~landingHeight', -0.5)
         self.safeHeight = rospy.get_param('~safeHeight', -1.5)
+        self.transition = rospy.get_param('~transition', 0.05)
         self.autoLand = rospy.get_param('~autoLand', False)
         self.cyclicalPath = rospy.get_param('~cyclicalPath', False)
         self.max_descend = rospy.get_param('~maxDescendRate', 5)
@@ -203,17 +204,15 @@ class StateMachine:
             print("EXITED GOAROUND THRESHOLD")
 
         velocityCommand = self.position_kp * error + self.feedForwardVelocity
-        #print(velocityCommand)
         return velocityCommand
 
 
     def land(self):
         # Land by aiming for a target slightly below the center of the landing pad
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,0.4]) + self.Rb2i.apply(np.array(self.antennaOffset))
+        #TODO to saturate or not to saturate when landing?
         #velocityCommand = self.saturate(self.landing_kp * error) + self.feedForwardVelocity
         velocityCommand = self.landing_kp * error + self.feedForwardVelocity
-
-        print(velocityCommand)
         return velocityCommand
 
     def threshold_timer(self):
@@ -254,9 +253,11 @@ class StateMachine:
         error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.landingHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
         xyError = np.linalg.norm(error[:2])
         zError = error[2]
-        #print("cone", self.coneRadius(zError), xyError, zError)
         abovePad = -self.rover2BaseRelPos[2] # Relative pose is positive up from the pad, hence the negative for NED
-        if xyError < self.coneRadius(abovePad) and abovePad < self.landingHeight and abovePad > self.rendezvousHeight:
+        coneRadius = self.coneRadius(abovePad)
+
+        # Inside cone
+        if xyError < (coneRadius - self.transition) and abovePad > self.rendezvousHeight:
             self.in_cone=True
             self.safeReturn(zError)
             #print("in:", error)
@@ -264,20 +265,30 @@ class StateMachine:
                 self.in_cylinder = True
             else:
                 self.in_cylinder = False
+            print("in:", self.returnHeight, abovePad)
+
+        # Inside transition area where the cone has repulsive force
+        elif xyError > (coneRadius - self.transition) and xyError < coneRadius and abovePad > self.rendezvousHeight:
+            repulsive_error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.returnHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
+            # Linear transition of the two fields
+            to_cone = coneRadius - xyError
+            k1 = to_cone/self.transition
+            k2 = (self.transition - to_cone)/ self.transition
+            error = k1 * error + k2 * repulsive_error
+            #print("Repel", self.returnHeight, repulsive_error, self.rover2BaseRelPos)
+        # Do not descend if outside cone, return to last known height within cone or a higher (safe) height if too close to the pad
+            print("repel:", self.returnHeight, abovePad)
+
         else:
-            # Do not descend if outside cone, return to last known height within cone or a higher (safe) height if too close to the pad
             self.in_cone=False
             self.in_cylinder=False
-            #print("out", self.returnHeight, zError) 
             error = np.array(self.rover2BaseRelPos) + np.array([0.0,0.0,self.returnHeight]) + self.Rb2i.apply(np.array(self.antennaOffset))
-            #print(error)
-            print(xyError < self.coneRadius(abovePad) , abovePad < self.landingHeight , abovePad > self.rendezvousHeight, abovePad, xyError)
-            if abovePad < self.safeHeight:
+            #print("out", self.rover2BaseRelPos, self.returnHeight)
+            if abovePad > self.safeHeight:
                 self.missionState = 3
                 self.publish_mission_state()
-                print("goaround state")
-
-        #print(self.missionState, self.returnHeight, error)
+                print("goaround state", abovePad)
+            print("out:", self.returnHeight, abovePad)
         return error
 
     def coneRadius(self, zError):
@@ -290,7 +301,7 @@ class StateMachine:
         if self.rover2BaseRelPos[2] > -self.safeHeight:
             self.returnHeight = -self.rover2BaseRelPos[2]
         else:
-            self.returnHeight = self.safeHeight - 0.5
+            self.returnHeight = self.safeHeight #- 0.5
         #print("in", self.returnHeight, zError) 
 
     def saturate(self, velocity):
