@@ -27,7 +27,7 @@ control_px4 is a package created to interface with ROS and the PX4-Autopilot to 
         $ python3 -m pip install --user numpy scipy
         $ pip3 install mavsdk
         $ pip3 install navpy 
-        $ pip3 install masgpack-rpc-python
+        $ pip3 install msgpack-rpc-python
         $ pip3 install airsim
       ```
 
@@ -44,9 +44,13 @@ control_px4 is a package created to interface with ROS and the PX4-Autopilot to 
 
 ## Get AirSim Source Code
 
-1. Download and extract the latest Airsim source code available on the Airsim Github repo: https://github.com/microsoft/AirSim/releases
-
-2. Navigate to the Airsim source code directory and run ./setup.sh followed by ./build.sh.
+1. Build the latest Airsim source code:
+      ```bash
+        git clone https://github.com/Microsoft/AirSim.git
+        cd AirSim
+        ./setup.sh
+        ./build.sh
+      ```
 
 ## Install PX4 SITL
 
