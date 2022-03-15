@@ -87,7 +87,6 @@ class StateMachine:
         self.rover2BaseRelPos[0] = msg.pose.pose.position.x
         self.rover2BaseRelPos[1] = msg.pose.pose.position.y
         self.rover2BaseRelPos[2] = msg.pose.pose.position.z
-        # TODO, uncomment this, just testing ff in sim
         self.feedForwardVelocity[0] = msg.twist.twist.linear.x
         self.feedForwardVelocity[1] = msg.twist.twist.linear.y
         self.feedForwardVelocity[2] = msg.twist.twist.linear.z
