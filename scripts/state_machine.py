@@ -87,9 +87,9 @@ class StateMachine:
         self.rover2BaseRelPos[1] = msg.pose.pose.position.y
         self.rover2BaseRelPos[2] = msg.pose.pose.position.z
         # TODO, uncomment this, just testing ff in sim
-        #self.feedForwardVelocity[0] = msg.twist.twist.linear.x
-        #self.feedForwardVelocity[1] = msg.twist.twist.linear.y
-        #self.feedForwardVelocity[2] = msg.twist.twist.linear.z
+        self.feedForwardVelocity[0] = msg.twist.twist.linear.x
+        self.feedForwardVelocity[1] = msg.twist.twist.linear.y
+        self.feedForwardVelocity[2] = msg.twist.twist.linear.z
         #print(np.linalg.norm(np.array(self.feedForwardVelocity)))
 
         self.Rb2i = R.from_quat([msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,msg.pose.pose.orientation.z,msg.pose.pose.orientation.w])      
@@ -106,7 +106,7 @@ class StateMachine:
         else:
             #commands = self.rendezvous()
             commands = self.fly_mission()
-
+        
         self.publish_hlc(commands)
 
     def fly_mission(self):
@@ -260,12 +260,11 @@ class StateMachine:
         if xyError < (coneRadius - self.transition) and abovePad > self.rendezvousHeight:
             self.in_cone=True
             self.safeReturn(zError)
-            #print("in:", error)
             if abs(zError) < self.landingCylinder:
                 self.in_cylinder = True
             else:
                 self.in_cylinder = False
-            print("in:", self.returnHeight, abovePad)
+            # print("in:", self.returnHeight, abovePad)
 
         # Inside transition area where the cone has repulsive force
         elif xyError > (coneRadius - self.transition) and xyError < coneRadius and abovePad > self.rendezvousHeight:
@@ -277,7 +276,7 @@ class StateMachine:
             error = k1 * error + k2 * repulsive_error
             #print("Repel", self.returnHeight, repulsive_error, self.rover2BaseRelPos)
         # Do not descend if outside cone, return to last known height within cone or a higher (safe) height if too close to the pad
-            print("repel:", self.returnHeight, abovePad)
+            # print("repel:", self.returnHeight, abovePad)
 
         else:
             self.in_cone=False
@@ -288,7 +287,7 @@ class StateMachine:
                 self.missionState = 3
                 self.publish_mission_state()
                 print("goaround state", abovePad)
-            print("out:", self.returnHeight, abovePad)
+            # print("out:", self.returnHeight, abovePad)
         return error
 
     def coneRadius(self, zError):

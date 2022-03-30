@@ -11,8 +11,16 @@
     <arg name="position_measurement"    value="/airsim_node/PX4/odom_local_ned"/> <!--might not need this-->
 
     <node name="airsim_publish" pkg="airsim_publish" type="airsim_publisher.py" output="screen"/>
+
     
     <include file="$(find airsim_ros_pkgs)/launch/airsim_node.launch" />
+    <group ns="airsim_node/PX4/bottom_center_custom/Scene/" >
+        <!-- disable image_transport -->
+        <rosparam param="disable_pub_plugins">
+            - 'image_transport/compressedDepth'
+            - 'image_transport/theora'
+        </rosparam>
+    </group>
     
     <!--AirSim 2 Ublox. Conversion of simulation data to pseudo GPS -->
     <group ns="a2u">

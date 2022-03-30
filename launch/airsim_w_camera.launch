@@ -19,6 +19,20 @@
     </group-->
 
     <include file="$(find airsim_ros_pkgs)/launch/airsim_node.launch" />
+    <group ns="airsim_node/PX4/bottom_center_custom/Scene/" >
+        <!-- disable image_transport -->
+        <rosparam param="disable_pub_plugins">
+            - 'image_transport/compressedDepth'
+            - 'image_transport/theora'
+        </rosparam>
+    </group>
+    <group ns="tag_detections_image/" >
+        <!-- disable image_transport -->
+        <rosparam param="disable_pub_plugins">
+            - 'image_transport/compressedDepth'
+            - 'image_transport/theora'
+        </rosparam>
+    </group>
 
     <!--AirSim 2 Ublox. Conversion of simulation data to pseudo GPS -->
     <group ns="a2u">

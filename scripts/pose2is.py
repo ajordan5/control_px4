@@ -19,6 +19,8 @@ class Pose2Is:
         self.prevTime = 0.0
 
         self.alpha = 0.05
+        self.total = 0
+        self.count = 0
 
         self.firstTime = False
 
@@ -49,8 +51,14 @@ class Pose2Is:
     def get_imu_data(self,dt,position,quat):
         Rb2i = R.from_quat(quat)
         Ri2b = Rb2i.inv()
+        #print(Rb2i.as_matrix())
         velocityRaw = (position - self.prevPosition)/dt
+        # self.total += abs(velocityRaw[0])
+        # self.count += 1
+        # #print(self.total/self.count)
         velocityLpf = self.low_pass_filter(velocityRaw,self.prevVelocity)
+        #print(position[0] - self.prevPosition[0], dt,velocityRaw[0], velocityLpf[0])
+
         accelerationRaw = (velocityLpf - self.prevVelocity)/dt
         accelerationLpf = self.low_pass_filter(accelerationRaw,self.prevAcceleration)
         accelerationWithGravity = accelerationLpf + np.array([0.0,0.0,-9.81])
@@ -66,7 +74,7 @@ class Pose2Is:
                                       [0.0, cphi, sphi*cth],
                                       [0.0, -sphi, cphi*cth]])
         angularRatesRaw = derivatives2Rates@eulerDot
-        #angularRatesLpf = self.low_pass_filter(angularRatesRaw,self.prevAngularRates)
+        # angularRatesLpf = self.low_pass_filter(angularRatesRaw,self.prevAngularRates)
         angularRatesLpf = np.zeros(3)
 
         self.prevPosition = position
