@@ -27,6 +27,7 @@ class CntrlPx4:
         self.offBoardOn = False
         self.sim = rospy.get_param('~sim', False)
         self.mocap = rospy.get_param('~mocap', False)
+        self.heading_north = rospy.get_param('~constant_heading_north', True)
         self.in_air = 0
         self.arm_status = 0
         if self.sim == True:
@@ -40,9 +41,19 @@ class CntrlPx4:
             self.positiion_measurement_sub_ = rospy.Subscriber('position_measurement', PoseStamped, self.positionMeasurementCallback, queue_size=5)
         
     def commandsCallback(self,msg):
+        # NED Velocity command
         self.velocityCommand.north_m_s = msg.twist.twist.linear.x
         self.velocityCommand.east_m_s = msg.twist.twist.linear.y
         self.velocityCommand.down_m_s = msg.twist.twist.linear.z
+
+        # Heading command
+        if not self.heading_north:
+            quat = [msg.pose.pose.orientation.x ,
+                    msg.pose.pose.orientation.y ,
+                    msg.pose.pose.orientation.z ,
+                    msg.pose.pose.orientation.w ]
+            base_heading = R.from_quat(quat).as_euler('xyz', degrees=True)[2]
+            self.velocityCommand.yaw_deg = base_heading
 
     def positionMeasurementCallback(self,msg):
        time = np.array(msg.header.stamp.secs) + np.array(msg.header.stamp.nsecs*1E-9) #TODO this prossibly needs to be adjusted for the px4 time.
