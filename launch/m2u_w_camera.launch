@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+
+<!--Launch file for flights in mocap-->
+<launch>
+    <arg name="bag_filename"            value="m2u_w_boat"/>
+    <arg name="rover_mocap"             value="/rhodey_ned"/>
+    <arg name="base_mocap"              value="/boat_landing_platform_ned"/>
+    <arg name="posVelEcef"              value="/m2u/rover/PosVelEcef"/>
+    <arg name="base2Rover_relPos"       value="/m2u/rover/RelPos"/>
+    <arg name="base_posVelEcef"         value="/m2u/base/PosVelEcef"/>
+    <arg name="compass_relPos"          value="/m2u/base/compass/RelPos"/>
+    <arg name="base_estimator_params"   value="params"/>
+    <arg name="position_measurement"    value="/rhodey_ned"/>
+
+    <!-- Motion capture node -->
+    <node name="node" pkg="optitrack_vrpn" type="node" output="screen"/>
+
+    <!-- Mocap converted to synthetic RTK GNSS -->
+    <group ns="m2u">
+        <rosparam command="load" file="$(find control_px4)/params/mocap2ublox.yaml"/>
+        <node name="mocap2ublox" pkg="control_px4" type="mocap2ublox.py" output="screen">
+            <remap from="rover_mocap" to="$(arg rover_mocap)"/>
+            <remap from="base_mocap" to="$(arg base_mocap)"/>
+        </node>
+    </group>
+
+    <include file="$(find boat_estimator)/launch/standard.launch">
+        <arg name="boat_imu"            value="/base/imu"/>
+        <arg name="base_2_rover_relPos" value="$(arg base2Rover_relPos)"/>
+        <arg name="rover_PosVelEcef"    value="$(arg posVelEcef)"/>
+        <arg name="boat_PosVelEcef"     value="$(arg base_posVelEcef)"/>
+        <arg name="compass_relPos"      value="$(arg compass_relPos)"/>
+        <arg name="params_file"         value="params"/>
+    </include>
+    
+    <!-- FLIR Chameleon 3 driver and apriltag detection -->
+    <include file="$(find apriltag_ros)/launch/continuous_detection.launch"/>
+    <include file="$(find pointgrey_camera_driver/launch/camera.launch"/>
+
+    <include file="$(find control_px4)/launch/include/control_px4.launch">
+        <arg name="position_measurement"    value="$(arg position_measurement)"/>
+        <arg name="posVelEcef"    value="$(arg posVelEcef)"/>
+    </include>
+    <node pkg="rosbag" type="record" name="record" output="screen" args="-o ../data/mocap/$(arg bag_filename).bag --all"/>
+</launch>
